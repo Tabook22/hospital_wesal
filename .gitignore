@@ -16,6 +16,9 @@ __pycache__/
 *.sqlite3
 backend/wesal.db
 
+# Scratch & temporary scripts
+scratch/
+
 # Logs & Environment variables
 *.log
 .env
