@@ -29,7 +29,7 @@ export const PatientsListPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
             {lang === 'ar' ? 'المرضى وسعة الأسرة السريرية' : 'Patients & Bedside Capacity'}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -39,15 +39,15 @@ export const PatientsListPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-3.5 h-3.5 absolute left-3 rtl:left-auto rtl:right-3 top-2.5 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={lang === 'ar' ? 'بحث باسم المريض، الرقم الصحي، الغرفة...' : 'Search patient, hospital #, room...'}
-              className="pl-8 rtl:pl-3 rtl:pr-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-hospital-500 w-52"
+              className="w-full sm:w-56 pl-8 rtl:pl-3 rtl:pr-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-hospital-500"
             />
           </div>
 
@@ -67,7 +67,7 @@ export const PatientsListPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
         {filteredPatients.map((p) => {
           const isFull = p.current_visitors_count >= p.max_concurrent_visitors;
           const isDailyFull = p.today_visitors_count >= p.max_daily_visitors;

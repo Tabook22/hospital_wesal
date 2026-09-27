@@ -69,17 +69,17 @@ export const LiveMonitorPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-950 text-slate-100 rounded-3xl p-6 md:p-8 min-h-[85vh] flex flex-col justify-between shadow-2xl border border-slate-800">
+    <div className="bg-slate-950 text-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 min-h-[85vh] flex flex-col justify-between shadow-2xl border border-slate-800">
       {/* Control Room Top Header */}
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4 sm:pb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-hospital-600/30 border border-hospital-500/50 flex items-center justify-center text-hospital-400">
-              <Radio className="w-6 h-6 animate-pulse" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-hospital-600/30 border border-hospital-500/50 flex items-center justify-center text-hospital-400 shrink-0">
+              <Radio className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-black tracking-tight text-white">{t('live.title')}</span>
+                <span className="text-xl sm:text-2xl font-black tracking-tight text-white">{t('live.title')}</span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                   {t('live.badge')}
                 </span>
@@ -90,7 +90,7 @@ export const LiveMonitorPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               onClick={() => refetch()}
               className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1.5"
@@ -109,45 +109,45 @@ export const LiveMonitorPage: React.FC = () => {
         </div>
 
         {/* 3 Prominent Large-Screen KPI Panels */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 my-4 sm:my-6">
           {/* Currently Inside */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex items-center justify-between shadow-lg">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 flex items-center justify-between shadow-lg">
             <div>
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">
                 {t('live.inside')}
               </span>
-              <span className="text-4xl sm:text-5xl font-black text-white mt-1 block">
+              <span className="text-3xl sm:text-4xl md:text-5xl font-black text-white mt-1 block">
                 {insideCount}
               </span>
-              <span className="text-xs text-hospital-400 mt-1 block font-medium">
+              <span className="text-[11px] sm:text-xs text-hospital-400 mt-1 block font-medium">
                 {lang === 'ar' ? 'الزوار المتواجدون حالياً' : 'Active Hospital Visitors'}
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-hospital-600/20 text-hospital-400">
-              <Users className="w-8 h-8" />
+            <div className="p-3 sm:p-4 rounded-2xl bg-hospital-600/20 text-hospital-400">
+              <Users className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
           </div>
 
           {/* Ending Soon */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex items-center justify-between shadow-lg">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 flex items-center justify-between shadow-lg">
             <div>
               <span className="text-xs font-bold text-amber-400 uppercase tracking-widest block">
                 {t('live.ending_soon')}
               </span>
-              <span className="text-4xl sm:text-5xl font-black text-amber-400 mt-1 block">
+              <span className="text-3xl sm:text-4xl md:text-5xl font-black text-amber-400 mt-1 block">
                 {endingSoonCount}
               </span>
-              <span className="text-xs text-slate-400 mt-1 block font-medium">
+              <span className="text-[11px] sm:text-xs text-slate-400 mt-1 block font-medium">
                 {lang === 'ar' ? 'أقل من 5 دقائق متبقية' : '< 5 minutes remaining'}
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-amber-500/20 text-amber-400">
-              <Clock className="w-8 h-8" />
+            <div className="p-3 sm:p-4 rounded-2xl bg-amber-500/20 text-amber-400">
+              <Clock className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
           </div>
 
           {/* Overdue */}
-          <div className={`border rounded-2xl p-6 flex items-center justify-between shadow-lg transition-all ${
+          <div className={`border rounded-2xl p-4 sm:p-6 flex items-center justify-between shadow-lg transition-all ${
             overdueCount > 0
               ? 'bg-rose-950/40 border-rose-500/60 ring-2 ring-rose-500/20'
               : 'bg-slate-900/80 border-slate-800'
@@ -156,17 +156,17 @@ export const LiveMonitorPage: React.FC = () => {
               <span className="text-xs font-bold text-rose-400 uppercase tracking-widest block">
                 {t('live.overdue')}
               </span>
-              <span className={`text-4xl sm:text-5xl font-black mt-1 block ${
+              <span className={`text-3xl sm:text-4xl md:text-5xl font-black mt-1 block ${
                 overdueCount > 0 ? 'text-rose-500 animate-pulse' : 'text-white'
               }`}>
                 {overdueCount}
               </span>
-              <span className="text-xs text-rose-300/80 mt-1 block font-medium">
+              <span className="text-[11px] sm:text-xs text-rose-300/80 mt-1 block font-medium">
                 {lang === 'ar' ? 'تم إرسال تنبيهات SMS والأمن' : 'Staff & SMS Alerts Dispatched'}
               </span>
             </div>
-            <div className={`p-4 rounded-2xl ${overdueCount > 0 ? 'bg-rose-500/30 text-rose-400 animate-bounce' : 'bg-slate-800 text-slate-400'}`}>
-              <AlertTriangle className="w-8 h-8" />
+            <div className={`p-3 sm:p-4 rounded-2xl ${overdueCount > 0 ? 'bg-rose-500/30 text-rose-400 animate-bounce' : 'bg-slate-800 text-slate-400'}`}>
+              <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
           </div>
         </div>

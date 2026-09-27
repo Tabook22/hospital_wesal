@@ -55,10 +55,10 @@ export const VisitorDetailPage: React.FC = () => {
       </div>
 
       {/* Top Profile Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-hospital-100 text-hospital-700 flex items-center justify-center font-bold text-xl">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-hospital-100 text-hospital-700 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0">
               {visitor.full_name[0]}
             </div>
             <div>

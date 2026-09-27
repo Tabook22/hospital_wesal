@@ -20,7 +20,7 @@ export const VisitorsListPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
             {lang === 'ar' ? 'سجل الزوار والمرافقين' : 'Visitors & Companions Directory'}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -30,15 +30,15 @@ export const VisitorsListPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-3.5 h-3.5 absolute left-3 rtl:left-auto rtl:right-3 top-2.5 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={lang === 'ar' ? 'بحث باسم الزائر، الرقم المدني...' : 'Search visitor name, civil ID...'}
-              className="pl-8 rtl:pl-3 rtl:pr-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-hospital-500 w-52"
+              className="w-full sm:w-56 pl-8 rtl:pl-3 rtl:pr-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-hospital-500"
             />
           </div>
 
@@ -56,7 +56,53 @@ export const VisitorsListPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Cards Stack (< md) */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {visitors.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-400">
+              {lang === 'ar' ? 'لم يتم العثور على سجلات زوار.' : 'No visitor records found.'}
+            </div>
+          ) : (
+            visitors.map((v) => (
+              <div key={v.id} className="p-4 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <Link to={`/visitors/${v.id}`} className="font-bold text-sm text-slate-900 hover:text-hospital-600">
+                      {v.full_name}
+                    </Link>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      <span className="font-mono">{v.civil_id}</span> • <span className="font-mono">{v.mobile_number}</span>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      v.visitor_type === 'COMPANION'
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-hospital-100 text-hospital-800'
+                    }`}
+                  >
+                    {v.visitor_type === 'COMPANION' ? (lang === 'ar' ? 'مرافق' : 'Companion') : (lang === 'ar' ? 'زائر' : 'Visitor')}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                  <span className="text-slate-500">
+                    {lang === 'ar' ? 'الصلة:' : 'Rel:'} <span className="font-medium text-slate-800">{v.relationship_to_patient || '—'}</span>
+                  </span>
+                  <Link
+                    to={`/visitors/${v.id}`}
+                    className="inline-flex items-center gap-1 font-bold text-xs text-hospital-700 hover:underline"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> {lang === 'ar' ? 'عرض السجل' : 'View'}
+                  </Link>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-left rtl:text-right text-xs">
             <thead className="bg-slate-100/70 text-slate-600 font-bold uppercase">
               <tr>

@@ -42,9 +42,9 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-hospital-50/40 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative">
+    <div className="min-h-[100dvh] bg-gradient-to-b from-slate-50 to-hospital-50/40 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 relative">
       {/* Language Switcher in Top Corner */}
-      <div className="absolute top-6 right-6 rtl:right-auto rtl:left-6">
+      <div className="absolute top-4 sm:top-6 right-4 sm:right-6 rtl:right-auto rtl:left-4 sm:rtl:left-6">
         <button
           type="button"
           onClick={toggleLang}
@@ -55,35 +55,35 @@ export const LoginPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center pt-8 sm:pt-0">
         {/* Hospital & Vision Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm mb-4">
           <Building2 className="w-4 h-4 text-hospital-600" />
-          <span className="text-xs font-semibold text-slate-700">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-700">
             {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
           </span>
         </div>
 
         {/* Brand Logo */}
         <div className="flex justify-center mb-3">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-hospital-700 to-hospital-500 flex items-center justify-center text-white shadow-xl shadow-hospital-500/25">
-            <Shield className="w-8 h-8" />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-hospital-700 to-hospital-500 flex items-center justify-center text-white shadow-xl shadow-hospital-500/25">
+            <Shield className="w-7 h-7 sm:w-8 sm:h-8" />
           </div>
         </div>
 
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           {lang === 'ar' ? 'وصل — WESAL' : 'WESAL — وصل'}
         </h1>
-        <p className="text-sm font-medium text-hospital-700 mt-1">
+        <p className="text-xs sm:text-sm font-medium text-hospital-700 mt-1">
           {t('brand.subtitle')}
         </p>
-        <p className="text-xs text-slate-500 mt-0.5">
+        <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
           {lang === 'ar' ? 'نموذج تطبيقي رسمي للعرض في مستشفى السلطان قابوس' : 'Prototype for Sultan Qaboos Hospital Official Demonstration'}
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-xl shadow-slate-200/50 rounded-2xl sm:px-10 border border-slate-100">
+      <div className="mt-6 sm:mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-6 px-4 sm:py-8 sm:px-10 shadow-xl shadow-slate-200/50 rounded-2xl sm:rounded-3xl border border-slate-100">
           {error && (
             <div className="mb-5 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
               {error}

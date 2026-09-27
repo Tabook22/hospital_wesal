@@ -53,7 +53,7 @@ export const SettingsPage: React.FC = () => {
               <Settings className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 {lang === 'ar' ? 'سياسات وإعدادات زيارة المستشفى' : 'Hospital Visitation Policy & Settings'}
               </h1>
               <p className="text-xs text-slate-500">

@@ -8,7 +8,15 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased min-h-screen font-sans selection:bg-hospital-500 selection:text-white;
+    @apply bg-slate-50 text-slate-900 antialiased min-h-[100dvh] font-sans selection:bg-hospital-500 selection:text-white;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* Safe area padding utilities for mobile devices */
+  :root {
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
   }
 
   /* Sleek modern scrollbars */

@@ -139,9 +139,9 @@ export const GateScannerPage: React.FC = () => {
         </div>
 
         {/* Checkpoint Location Switcher */}
-        <div className="bg-slate-800 p-2 rounded-xl border border-slate-700 flex items-center gap-2">
-          <Building className="w-4 h-4 text-hospital-400" />
-          <div className="flex flex-col">
+        <div className="bg-slate-800 p-2 sm:p-2.5 rounded-xl border border-slate-700 flex items-center gap-2 w-full sm:w-auto">
+          <Building className="w-4 h-4 text-hospital-400 shrink-0" />
+          <div className="flex flex-col min-w-0 flex-1">
             <span className="text-[10px] uppercase font-bold text-slate-400">{t('gate.current_cp')}</span>
             <select
               value={selectedCheckpointCode}
@@ -150,7 +150,7 @@ export const GateScannerPage: React.FC = () => {
                 setScanResult(null);
               }}
               aria-label={t('gate.current_cp')}
-              className="bg-transparent text-sm font-bold text-white border-none focus:ring-0 p-0 pr-6 cursor-pointer"
+              className="bg-transparent text-xs sm:text-sm font-bold text-white border-none focus:ring-0 p-0 pr-6 cursor-pointer truncate"
             >
               {checkpoints.map((c) => (
                 <option key={c.code} value={c.code} className="bg-slate-900 text-white">
@@ -218,7 +218,7 @@ export const GateScannerPage: React.FC = () => {
 
               {/* Detail fields if recognized */}
               {scanResult.visitor_name && (
-                <div className="mt-4 pt-4 border-t border-slate-200/60 grid grid-cols-2 gap-3 text-xs bg-white/70 p-3 rounded-xl">
+                <div className="mt-4 pt-4 border-t border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white/70 p-3 rounded-xl">
                   <div>
                     <span className="text-slate-500 block">{lang === 'ar' ? 'الزائر:' : 'Visitor:'}</span>
                     <span className="font-bold text-slate-900">{scanResult.visitor_name}</span>

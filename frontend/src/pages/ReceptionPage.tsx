@@ -139,43 +139,53 @@ export const ReceptionPage: React.FC = () => {
         </div>
 
         {/* Stepper Progress */}
-        <div className="mt-6 flex items-center justify-between">
-          {[
-            { num: 1, label: t('rec.step1') },
-            { num: 2, label: t('rec.step2') },
-            { num: 3, label: t('rec.step3') },
-            { num: 4, label: t('rec.step4') },
-          ].map((st) => (
-            <div key={st.num} className="flex-1 flex items-center">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                    step > st.num
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : step === st.num
-                      ? 'bg-hospital-600 text-white shadow-md ring-4 ring-hospital-100'
-                      : 'bg-slate-200 text-slate-500'
-                  }`}
-                >
-                  {step > st.num ? <CheckCircle2 className="w-4 h-4" /> : st.num}
+        <div className="mt-6">
+          <div className="flex items-center justify-between">
+            {[
+              { num: 1, label: t('rec.step1') },
+              { num: 2, label: t('rec.step2') },
+              { num: 3, label: t('rec.step3') },
+              { num: 4, label: t('rec.step4') },
+            ].map((st) => (
+              <div key={st.num} className="flex-1 flex items-center">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0 ${
+                      step > st.num
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : step === st.num
+                        ? 'bg-hospital-600 text-white shadow-md ring-4 ring-hospital-100'
+                        : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {step > st.num ? <CheckCircle2 className="w-4 h-4" /> : st.num}
+                  </div>
+                  <span
+                    className={`text-xs font-bold hidden md:inline truncate ${
+                      step >= st.num ? 'text-slate-900' : 'text-slate-400'
+                    }`}
+                  >
+                    {st.label}
+                  </span>
                 </div>
-                <span
-                  className={`text-xs font-bold hidden sm:inline ${
-                    step >= st.num ? 'text-slate-900' : 'text-slate-400'
-                  }`}
-                >
-                  {st.label}
-                </span>
+                {st.num < 4 && (
+                  <div
+                    className={`flex-1 h-0.5 mx-1.5 sm:mx-3 transition-colors ${
+                      step > st.num ? 'bg-emerald-500' : 'bg-slate-200'
+                    }`}
+                  />
+                )}
               </div>
-              {st.num < 4 && (
-                <div
-                  className={`flex-1 h-0.5 mx-3 transition-colors ${
-                    step > st.num ? 'bg-emerald-500' : 'bg-slate-200'
-                  }`}
-                />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
+          {/* Active Step Indicator for Mobile */}
+          <div className="md:hidden mt-2.5 text-center">
+            <span className="text-xs font-bold text-hospital-700 bg-hospital-50 px-3 py-1 rounded-full border border-hospital-200">
+              {step === 1 ? t('rec.step1') :
+               step === 2 ? t('rec.step2') :
+               step === 3 ? t('rec.step3') : t('rec.step4')}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -360,12 +370,13 @@ export const ReceptionPage: React.FC = () => {
                 {t('rec.civil_id')}
               </label>
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
                 required
                 value={civilId}
                 onChange={(e) => setCivilId(e.target.value)}
                 placeholder={lang === 'ar' ? 'مثال: 10928374' : 'e.g. 10928374'}
-                className="w-full text-sm px-3.5 py-2 border border-slate-300 rounded-lg focus:ring-hospital-500"
+                className="w-full text-sm px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-hospital-500"
               />
             </div>
 
@@ -374,12 +385,13 @@ export const ReceptionPage: React.FC = () => {
                 {t('rec.mobile')}
               </label>
               <input
-                type="text"
+                type="tel"
+                inputMode="tel"
                 required
                 value={mobileNumber}
                 onChange={(e) => setMobileNumber(e.target.value)}
                 placeholder={lang === 'ar' ? 'مثال: 96891234567' : 'e.g. 96891234567'}
-                className="w-full text-sm px-3.5 py-2 border border-slate-300 rounded-lg focus:ring-hospital-500"
+                className="w-full text-sm px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-hospital-500"
               />
             </div>
 
@@ -505,7 +517,7 @@ export const ReceptionPage: React.FC = () => {
                 : 'Select visit duration. Short durations (1-2 minutes) allow hospital officials to observe the live 5-minute warning and overdue alert mechanisms during the presentation without waiting 20 minutes.'}
             </p>
 
-            <div className="grid grid-cols-5 gap-2 pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
               {[
                 { label: lang === 'ar' ? '1 دقيقة' : '1 Min', val: 1 },
                 { label: lang === 'ar' ? '2 دقيقة' : '2 Mins', val: 2 },
@@ -517,7 +529,7 @@ export const ReceptionPage: React.FC = () => {
                   key={d.val}
                   type="button"
                   onClick={() => setDurationMinutes(d.val)}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold text-center border transition-all ${
+                  className={`py-2 px-3 rounded-xl text-xs font-bold text-center border transition-all ${
                     durationMinutes === d.val
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-105'
                       : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'

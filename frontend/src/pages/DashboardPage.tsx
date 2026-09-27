@@ -189,18 +189,18 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* 6 Executive KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {/* Visitors Inside */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-sm relative overflow-hidden">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.inside')}</span>
-            <div className="p-2 rounded-lg bg-hospital-50 text-hospital-600">
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.inside')}</span>
+            <div className="p-2 rounded-xl bg-hospital-50 text-hospital-600">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{kpis.visitors_inside}</span>
-            <span className="text-[11px] font-medium text-emerald-600 flex items-center">
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-2xl font-black text-slate-900">{kpis.visitors_inside}</span>
+            <span className="text-[10px] sm:text-[11px] font-medium text-emerald-600 flex items-center">
               <Activity className="w-3 h-3 mr-0.5 animate-pulse" /> {t('dash.kpi.active_pulse')}
             </span>
           </div>
@@ -213,98 +213,98 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Visitors Today */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-sm">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.today')}</span>
-            <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.today')}</span>
+            <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
               <UserCheck className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{kpis.visitors_today}</span>
-            <span className="text-[11px] text-slate-400">{lang === 'ar' ? 'إجمالي' : 'Total'}</span>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-2xl font-black text-slate-900">{kpis.visitors_today}</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-400">{lang === 'ar' ? 'إجمالي' : 'Total'}</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-3 flex items-center gap-1">
+          <p className="text-[10px] sm:text-[11px] text-slate-500 mt-3 flex items-center gap-1">
             <ArrowUpRight className="w-3 h-3 text-emerald-500" /> {lang === 'ar' ? 'كافة الأجنحة' : 'Across all wards'}
           </p>
         </div>
 
         {/* Checked Out */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-sm">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.checked_out')}</span>
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.checked_out')}</span>
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{kpis.checked_out}</span>
-            <span className="text-[11px] text-slate-400">{lang === 'ar' ? 'غادروا' : 'Exited'}</span>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-2xl font-black text-slate-900">{kpis.checked_out}</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-400">{lang === 'ar' ? 'غادروا' : 'Exited'}</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-3 flex items-center gap-1">
+          <p className="text-[10px] sm:text-[11px] text-slate-500 mt-3 flex items-center gap-1">
             <ArrowDownRight className="w-3 h-3 text-slate-400" /> {lang === 'ar' ? 'بوابة الخروج CP-07' : 'Passed CP-07'}
           </p>
         </div>
 
         {/* Overdue */}
-        <div className={`rounded-xl p-4 border shadow-sm transition-all ${
+        <div className={`rounded-2xl p-3.5 sm:p-4 border shadow-sm transition-all ${
           kpis.overdue > 0
             ? 'bg-rose-50/50 border-rose-300 ring-2 ring-rose-500/20'
-            : 'bg-white border-slate-200'
+            : 'bg-white border-slate-200/90'
         }`}>
           <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.overdue')}</span>
-            <div className={`p-2 rounded-lg ${kpis.overdue > 0 ? 'bg-rose-100 text-rose-600 animate-bounce' : 'bg-slate-100 text-slate-500'}`}>
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.overdue')}</span>
+            <div className={`p-2 rounded-xl ${kpis.overdue > 0 ? 'bg-rose-100 text-rose-600 animate-bounce' : 'bg-slate-100 text-slate-500'}`}>
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className={`text-2xl font-black ${kpis.overdue > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className={`text-xl sm:text-2xl font-black ${kpis.overdue > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
               {kpis.overdue}
             </span>
             {kpis.overdue > 0 && (
-              <span className="text-[11px] font-bold text-rose-600 uppercase">{t('dash.kpi.alert_sent')}</span>
+              <span className="text-[10px] sm:text-[11px] font-bold text-rose-600 uppercase">{t('dash.kpi.alert_sent')}</span>
             )}
           </div>
-          <p className="text-[11px] text-slate-500 mt-3">{lang === 'ar' ? 'تجاوزوا المدة المحددة' : 'Exceeded visiting time'}</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-500 mt-3">{lang === 'ar' ? 'تجاوزوا المدة المحددة' : 'Exceeded visiting time'}</p>
         </div>
 
         {/* Denied Entries */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-sm">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.denied')}</span>
-            <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.denied')}</span>
+            <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
               <ShieldX className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{kpis.denied_entries}</span>
-            <span className="text-[11px] text-slate-400">{lang === 'ar' ? 'محاولات' : 'Attempts'}</span>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-2xl font-black text-slate-900">{kpis.denied_entries}</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-400">{lang === 'ar' ? 'محاولات' : 'Attempts'}</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-3">{lang === 'ar' ? 'منع بالسعة والسياسات' : 'Policy / capacity blocks'}</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-500 mt-3">{lang === 'ar' ? 'منع بالسعة والسياسات' : 'Policy / capacity blocks'}</p>
         </div>
 
         {/* Active Passes */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-sm">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.passes')}</span>
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('dash.kpi.passes')}</span>
+            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
               <QrCode className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{kpis.active_passes}</span>
-            <span className="text-[11px] text-slate-400">{lang === 'ar' ? 'باركود QR' : 'Tokens'}</span>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-2xl font-black text-slate-900">{kpis.active_passes}</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-400">{lang === 'ar' ? 'باركود QR' : 'Tokens'}</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-3">{lang === 'ar' ? 'تصاريح صالحة للدخول' : 'Scannable QR codes'}</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-500 mt-3">{lang === 'ar' ? 'تصاريح صالحة للدخول' : 'Scannable QR codes'}</p>
         </div>
       </div>
 
       {/* Analytics Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Hourly Entries vs Exits Area Chart */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
             <div>
               <h2 className="text-sm font-bold text-slate-900">{t('dash.traffic.title')}</h2>
               <p className="text-xs text-slate-500">{t('dash.traffic.subtitle')}</p>
@@ -318,9 +318,9 @@ export const DashboardPage: React.FC = () => {
               </span>
             </div>
           </div>
-          <div className="h-56 w-full">
+          <div className="h-52 sm:h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data?.hourly_activity || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={data?.hourly_activity || []} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <defs>
                   <linearGradient id="entryGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0284c7" stopOpacity={0.4} />
@@ -465,8 +465,96 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Table Content */}
-        <div className="overflow-x-auto">
+        {/* Dual-Mode Responsive View: Mobile Cards (< md) & Desktop Table (>= md) */}
+        {/* 1. Mobile Cards View */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {filteredVisitors.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-400">
+              {lang === 'ar' ? 'لا يوجد زوار مطابقين لخيارات البحث المحددة.' : 'No visitors found matching current filters.'}
+            </div>
+          ) : (
+            filteredVisitors.map((visit) => {
+              const countdown = formatCountdown(visit);
+              const entryFormatted = visit.check_in_at
+                ? new Date(visit.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : '—';
+
+              return (
+                <div
+                  key={visit.id}
+                  className={`p-4 transition-colors space-y-2.5 ${
+                    visit.status === 'OVERDUE' ? 'bg-rose-50/40' : 'bg-white'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <Link to={`/visitors/${visit.visitor_id}`} className="font-bold text-sm text-slate-900 hover:text-hospital-600 block">
+                        {visit.visitor_name}
+                      </Link>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                          {visit.visitor_type === 'COMPANION' ? (lang === 'ar' ? 'مرافق' : 'Companion') : (lang === 'ar' ? 'زائر' : 'Visitor')}
+                        </span>
+                        <Link to={`/passes`} className="font-mono text-xs font-bold text-hospital-700 hover:underline">
+                          {visit.pass_obj?.pass_code || visit.visit_number}
+                        </Link>
+                      </div>
+                    </div>
+
+                    <span className={countdown.badge}>
+                      {countdown.text}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">{lang === 'ar' ? 'المريض:' : 'Patient:'}</span>
+                      <span className="font-semibold text-slate-800">{visit.patient_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">{lang === 'ar' ? 'الجناح والغرفة:' : 'Ward & Room:'}</span>
+                      <span className="font-bold text-hospital-700">{visit.ward_name} • {visit.patient_room}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
+                      <span>{lang === 'ar' ? 'وقت الدخول:' : 'Entry:'} {entryFormatted}</span>
+                      <span>{visit.last_checkpoint_name || (lang === 'ar' ? 'المدخل الرئيسي' : 'Main Gate')}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <Link
+                      to={`/visitors/${visit.visitor_id}`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-hospital-700 hover:underline"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      {lang === 'ar' ? 'تفاصيل الزائر' : 'Details'}
+                    </Link>
+
+                    {visit.status !== 'CHECKED_OUT' && (
+                      <button
+                        onClick={async () => {
+                          const msg = lang === 'ar' 
+                            ? `هل أنت متأكد من تسجيل خروج الزائر ${visit.visitor_name}؟`
+                            : `Perform checkout for visitor ${visit.visitor_name}?`;
+                          if (confirm(msg)) {
+                            await api.checkoutVisit(visit.id);
+                            refetch();
+                          }
+                        }}
+                        className="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-sm"
+                      >
+                        {t('btn.checkout')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 2. Desktop Table View (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-left rtl:text-right text-xs">
             <thead className="bg-slate-100/70 text-slate-600 font-bold uppercase tracking-wider">
               <tr>

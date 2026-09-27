@@ -14,8 +14,13 @@ interface NavItem {
   badge?: string;
 }
 
-export const Sidebar: React.FC = () => {
-  const { t } = useLanguage();
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
+  const { t, isRtl, lang } = useLanguage();
 
   const navItems: NavItem[] = [
     { key: 'nav.dashboard', name: t('nav.dashboard'), href: '/dashboard', icon: LayoutDashboard },
@@ -32,9 +37,35 @@ export const Sidebar: React.FC = () => {
     { key: 'nav.demo', name: t('nav.demo'), href: '/demo', icon: Sparkles, badge: 'Demo' },
   ];
 
-  return (
-    <aside className="w-64 bg-slate-900 text-slate-300 min-h-[calc(100vh-4rem)] flex-shrink-0 flex flex-col justify-between p-4 no-print border-r rtl:border-r-0 rtl:border-l border-slate-800">
+  const sidebarContent = (
+    <div className="flex flex-col justify-between h-full p-4 overflow-y-auto">
       <div className="space-y-6">
+        {/* Mobile Header Inside Drawer */}
+        <div className="lg:hidden flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-hospital-600 flex items-center justify-center text-white font-bold text-sm">
+              {lang === 'ar' ? 'و' : 'W'}
+            </div>
+            <div>
+              <span className="font-bold text-white text-sm block">
+                {lang === 'ar' ? 'منظومة وصل الذكية' : 'WESAL Platform'}
+              </span>
+              <span className="text-[10px] text-slate-400 block">
+                {t('hospital.name')}
+              </span>
+            </div>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              aria-label="Close menu"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
         <div>
           <p className="px-3 text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2">
             {t('nav.operations')}
@@ -44,11 +75,12 @@ export const Sidebar: React.FC = () => {
               <NavLink
                 key={item.href}
                 to={item.href}
+                onClick={onClose}
                 className={({ isActive }) =>
-                  `flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  `flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-hospital-600 text-white shadow-sm'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-hospital-600 text-white shadow-sm shadow-hospital-600/30'
+                      : 'text-slate-300 hover:bg-slate-800/90 hover:text-white'
                   }`
                 }
               >
@@ -75,11 +107,12 @@ export const Sidebar: React.FC = () => {
               <NavLink
                 key={item.href}
                 to={item.href}
+                onClick={onClose}
                 className={({ isActive }) =>
-                  `flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  `flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-hospital-600 text-white shadow-sm'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-hospital-600 text-white shadow-sm shadow-hospital-600/30'
+                      : 'text-slate-300 hover:bg-slate-800/90 hover:text-white'
                   }`
                 }
               >
@@ -99,17 +132,47 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Hospital Footer Card */}
-      <div className="bg-slate-800/80 rounded-xl p-3 border border-slate-700/60">
-        <div className="flex items-center gap-2 mb-1.5">
+      <div className="bg-slate-800/90 rounded-2xl p-3.5 border border-slate-700/60 mt-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="text-xs font-semibold text-white">{t('hospital.name')}</span>
+          <span className="text-xs font-bold text-white">{t('hospital.name')}</span>
         </div>
-        <p className="text-[11px] text-slate-400 leading-tight">
+        <p className="text-[11px] text-slate-400 leading-snug">
           {t('hospital.ministry')}
           <br />
-          {t('vision.badge')}
+          <span className="text-[10px] text-hospital-400 font-semibold">{t('vision.badge')}</span>
         </p>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar (>= 1024px) */}
+      <aside className="hidden lg:flex w-64 bg-slate-900 text-slate-300 min-h-[calc(100vh-4rem)] flex-shrink-0 flex-col no-print border-r rtl:border-r-0 rtl:border-l border-slate-800 sticky top-16 h-[calc(100vh-4rem)]">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer Backdrop & Slide-over (< 1024px) */}
+      {isOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex no-print">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
+            onClick={onClose}
+          />
+
+          {/* Drawer Panel */}
+          <aside
+            className={`relative w-72 max-w-[85vw] bg-slate-900 text-slate-300 h-full shadow-2xl flex flex-col z-10 animate-in ${
+              isRtl ? 'mr-auto slide-in-from-right' : 'ml-auto slide-in-from-left'
+            } duration-200 border-slate-800 ${isRtl ? 'border-l' : 'border-r'}`}
+          >
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 };
+

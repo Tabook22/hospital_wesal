@@ -4,13 +4,17 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useLiveUpdates } from '../../hooks/useLiveUpdates';
 import {
   Shield, UserCheck, Stethoscope, LogOut, Radio, QrCode,
-  Sparkles, Building2, Globe, BookOpen
+  Sparkles, Building2, Globe, BookOpen, Menu
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserRole } from '../../types';
 import { AdminWorkflowGuide } from '../common/AdminWorkflowGuide';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onToggleMenu?: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onToggleMenu }) => {
   const { user, logout, switchRole } = useAuth();
   const { isConnected } = useLiveUpdates();
   const { lang, toggleLang, isRtl, t } = useLanguage();
@@ -24,32 +28,42 @@ export const Navbar: React.FC = () => {
   return (
     <>
       <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 no-print transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            {/* Logo & Hospital Brand */}
-            <div className="flex items-center space-x-3 rtl:space-x-reverse">
-              <Link to="/dashboard" className="flex items-center space-x-3 rtl:space-x-reverse group">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-hospital-700 via-hospital-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-hospital-500/20 group-hover:scale-105 transition-transform">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center gap-2">
+            {/* Left: Mobile Menu Button & Brand */}
+            <div className="flex items-center space-x-2 sm:space-x-3 rtl:space-x-reverse min-w-0">
+              {/* Mobile Hamburger Drawer Trigger */}
+              <button
+                type="button"
+                onClick={onToggleMenu}
+                aria-label="Open Navigation Menu"
+                className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-hospital-500"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+
+              <Link to="/dashboard" className="flex items-center space-x-2 sm:space-x-3 rtl:space-x-reverse group min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-gradient-to-tr from-hospital-700 via-hospital-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-hospital-500/20 group-hover:scale-105 transition-transform">
                   <Shield className="w-5 h-5" />
                 </div>
-                <div>
-                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                    <span className="font-black text-xl tracking-tight bg-gradient-to-r from-hospital-800 to-indigo-800 bg-clip-text text-transparent">
+                <div className="min-w-0">
+                  <div className="flex items-center space-x-1.5 rtl:space-x-reverse">
+                    <span className="font-black text-lg sm:text-xl tracking-tight bg-gradient-to-r from-hospital-800 to-indigo-800 bg-clip-text text-transparent">
                       {lang === 'ar' ? 'وصل' : 'WESAL'}
                     </span>
-                    <span className="text-[10px] bg-hospital-100 text-hospital-800 px-1.5 py-0.5 rounded-full font-bold border border-hospital-200">
+                    <span className="text-[9px] sm:text-[10px] bg-hospital-100 text-hospital-800 px-1.5 py-0.2 rounded-full font-bold border border-hospital-200 shrink-0">
                       {lang === 'ar' ? 'WESAL' : 'وصل'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                    <Building2 className="w-3 h-3 text-hospital-500" />
-                    {t('hospital.name')}
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-medium flex items-center gap-1 truncate max-w-[130px] sm:max-w-none">
+                    <Building2 className="w-3 h-3 text-hospital-500 shrink-0" />
+                    <span className="truncate">{t('hospital.name')}</span>
                   </p>
                 </div>
               </Link>
 
               {/* Live WebSocket Sync Pill */}
-              <div className="hidden lg:flex items-center space-x-1.5 rtl:space-x-reverse px-3 py-1 bg-slate-50 rounded-full border border-slate-200/80">
+              <div className="hidden xl:flex items-center space-x-1.5 rtl:space-x-reverse px-2.5 py-1 bg-slate-50 rounded-full border border-slate-200/80">
                 <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
                 <span className="text-[11px] font-semibold text-slate-600">
                   {isConnected ? t('sync.active') : t('sync.connecting')}
@@ -58,16 +72,16 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* Right Action Controls */}
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 rtl:space-x-reverse shrink-0">
               {/* Friendly Admin Step-by-Step Operator Guide Button */}
               <button
                 onClick={() => setIsGuideOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-50 to-emerald-50 text-emerald-800 border border-emerald-300/80 hover:border-emerald-400 hover:shadow-sm text-xs font-bold transition-all group"
+                className="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gradient-to-r from-amber-50 to-emerald-50 text-emerald-800 border border-emerald-300/80 hover:border-emerald-400 hover:shadow-sm text-xs font-bold transition-all group"
                 title={lang === 'ar' ? 'عرض دليل خطوات العمل للمشغل وإرشادات الزوار' : 'Open Admin Step-by-Step Workflow Guide'}
               >
-                <BookOpen className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
-                <span className="hidden sm:inline">
-                  {lang === 'ar' ? 'دليل المشغل والخطوات' : 'Operator Guide'}
+                <BookOpen className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+                <span className="hidden md:inline">
+                  {lang === 'ar' ? 'دليل المشغل' : 'Operator Guide'}
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping sm:inline-block hidden" />
               </button>
@@ -75,11 +89,11 @@ export const Navbar: React.FC = () => {
               {/* Language Switcher Toggle */}
               <button
                 onClick={toggleLang}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-hospital-50 hover:border-hospital-300 text-xs font-bold text-slate-700 hover:text-hospital-700 transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-hospital-50 hover:border-hospital-300 text-xs font-bold text-slate-700 hover:text-hospital-700 transition-colors shadow-sm"
                 title={lang === 'ar' ? 'Switch to English' : 'التحويل إلى اللغة العربية'}
               >
                 <Globe className="w-3.5 h-3.5 text-hospital-600" />
-                <span>{lang === 'ar' ? 'English' : 'العربية'}</span>
+                <span className="text-[11px] font-black">{lang === 'ar' ? 'EN' : 'عربي'}</span>
               </button>
 
               {/* Quick Demo Simulator Badge */}
@@ -91,23 +105,23 @@ export const Navbar: React.FC = () => {
                 {t('btn.demo_simulator')}
               </Link>
 
-              {/* Quick Smart Gate Button */}
+              {/* Quick Smart Gate Button (visible on tablet+) */}
               <Link
                 to="/gate"
-                className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm hover:shadow"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm hover:shadow"
               >
                 <QrCode className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="hidden md:inline">{t('btn.smart_gate')}</span>
               </Link>
 
               {/* Role Switcher */}
-              <div className="flex items-center space-x-1.5 rtl:space-x-reverse bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200">
-                <span className="text-xs text-slate-500 hidden sm:inline">{t('role.label')}:</span>
+              <div className="flex items-center space-x-1 rtl:space-x-reverse bg-slate-50 px-2 py-1 rounded-xl border border-slate-200">
+                <span className="text-xs text-slate-500 hidden lg:inline">{t('role.label')}:</span>
                 <select
                   value={user?.role || 'ADMIN'}
                   onChange={handleRoleSelect}
                   aria-label={t('role.label')}
-                  className="text-xs font-bold bg-transparent border-none text-slate-800 focus:ring-0 cursor-pointer pr-3 py-0.5"
+                  className="text-xs font-bold bg-transparent border-none text-slate-800 focus:ring-0 cursor-pointer pr-2 py-0.5 max-w-[90px] sm:max-w-none truncate"
                 >
                   <option value="ADMIN">{t('role.admin')}</option>
                   <option value="RECEPTION">{t('role.reception')}</option>
@@ -123,7 +137,7 @@ export const Navbar: React.FC = () => {
                   navigate('/login');
                 }}
                 title={t('btn.signout')}
-                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
               >
                 <LogOut className="w-4 h-4" />
               </button>

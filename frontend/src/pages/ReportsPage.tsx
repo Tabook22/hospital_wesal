@@ -81,7 +81,7 @@ export const ReportsPage: React.FC = () => {
               <BarChart3 className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 {lang === 'ar' ? 'التقارير التشغيلية والتدقيق الأمني' : 'Operational Reports & Auditing'}
               </h1>
               <p className="text-xs text-slate-500">
@@ -93,16 +93,16 @@ export const ReportsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <button
             onClick={handleExportCSV}
-            className="btn-secondary text-xs flex items-center gap-1.5"
+            className="flex-1 sm:flex-initial btn-secondary text-xs flex items-center justify-center gap-1.5"
           >
             <Download className="w-3.5 h-3.5" /> {t('btn.export_csv')}
           </button>
           <button
             onClick={handlePrint}
-            className="btn-primary text-xs flex items-center gap-1.5 shadow-sm"
+            className="flex-1 sm:flex-initial btn-primary text-xs flex items-center justify-center gap-1.5 shadow-sm"
           >
             <Printer className="w-3.5 h-3.5" /> {lang === 'ar' ? 'طباعة التقرير' : 'Print Report'}
           </button>
@@ -110,7 +110,7 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       {/* Report Tabs */}
-      <div className="flex border-b border-slate-200 gap-2 no-print overflow-x-auto">
+      <div className="flex border-b border-slate-200 gap-1 sm:gap-2 no-print overflow-x-auto pb-px">
         {[
           { id: 'TODAY', label: lang === 'ar' ? 'تقرير ملخص اليوم' : "Today's Summary Report" },
           { id: 'CURRENT_LIVE', label: lang === 'ar' ? 'سجل المتواجدين حالياً (للطباعة)' : 'Current Live Hospital Status (Printable)' },
@@ -120,7 +120,7 @@ export const ReportsPage: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
+            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
               activeTab === tab.id
                 ? 'border-hospital-600 text-hospital-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'

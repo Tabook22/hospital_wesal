@@ -12,6 +12,7 @@ import { useLanguage } from '../context/LanguageContext';
 export const AlertsPage: React.FC = () => {
   const { t, lang } = useLanguage();
   const [selectedAlert, setSelectedAlert] = useState<NotificationItem | null>(null);
+  const [mobileTab, setMobileTab] = useState<'LOGS' | 'PHONE' | 'DISPATCH'>('LOGS');
 
   // Custom Simulator Form State
   const [recipientName, setRecipientName] = useState(lang === 'ar' ? 'محمد بن علي اليافعي' : 'Mohammed Ali');
@@ -45,6 +46,7 @@ export const AlertsPage: React.FC = () => {
       }),
     onSuccess: (newAlert) => {
       setSelectedAlert(newAlert);
+      setMobileTab('PHONE');
       refetch();
     },
   });
@@ -59,7 +61,7 @@ export const AlertsPage: React.FC = () => {
               <Bell className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t('alerts.title')}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{t('alerts.title')}</h1>
               <p className="text-xs text-slate-500">
                 {t('alerts.subtitle')}
               </p>
@@ -75,10 +77,40 @@ export const AlertsPage: React.FC = () => {
         </button>
       </div>
 
+      {/* Mobile Tab Switcher (< lg) */}
+      <div className="lg:hidden flex bg-slate-200/70 p-1 rounded-xl text-xs font-bold no-print">
+        <button
+          onClick={() => setMobileTab('LOGS')}
+          className={`flex-1 py-2 text-center rounded-lg transition-all ${
+            mobileTab === 'LOGS' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'
+          }`}
+        >
+          {lang === 'ar' ? `السجل (${alerts.length})` : `Logs (${alerts.length})`}
+        </button>
+        <button
+          onClick={() => setMobileTab('PHONE')}
+          className={`flex-1 py-2 text-center rounded-lg transition-all ${
+            mobileTab === 'PHONE' ? 'bg-white text-hospital-700 shadow-sm' : 'text-slate-600'
+          }`}
+        >
+          {lang === 'ar' ? 'معاينة الهاتف 📱' : 'Phone View 📱'}
+        </button>
+        <button
+          onClick={() => setMobileTab('DISPATCH')}
+          className={`flex-1 py-2 text-center rounded-lg transition-all ${
+            mobileTab === 'DISPATCH' ? 'bg-white text-hospital-700 shadow-sm' : 'text-slate-600'
+          }`}
+        >
+          {lang === 'ar' ? 'إرسال تنبيه 📤' : 'Dispatch 📤'}
+        </button>
+      </div>
+
       {/* Main Grid: Left = Notifications List, Center = Mobile Device Mockup, Right = Simulator Sender */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Alerts Log Stream (5 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+        {/* Alerts Log Stream (4 cols) */}
+        <div className={`lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3 ${
+          mobileTab === 'LOGS' ? 'block' : 'hidden lg:block'
+        }`}>
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <span className="text-xs font-bold text-slate-700 uppercase">
               {lang === 'ar' ? `سجل التنبيهات (${alerts.length})` : `Alert Logs (${alerts.length})`}
@@ -99,7 +131,10 @@ export const AlertsPage: React.FC = () => {
                 return (
                   <div
                     key={a.id}
-                    onClick={() => setSelectedAlert(a)}
+                    onClick={() => {
+                      setSelectedAlert(a);
+                      setMobileTab('PHONE');
+                    }}
                     className={`p-3 rounded-xl border transition-all cursor-pointer text-left rtl:text-right ${
                       activeSelected?.id === a.id
                         ? 'bg-hospital-50 border-hospital-500 ring-2 ring-hospital-500/20 shadow-sm'
@@ -137,7 +172,9 @@ export const AlertsPage: React.FC = () => {
         </div>
 
         {/* Center: Mobile Device Simulation Mockup (4 cols) */}
-        <div className="lg:col-span-4 flex flex-col items-center justify-center">
+        <div className={`lg:col-span-4 flex flex-col items-center justify-center ${
+          mobileTab === 'PHONE' ? 'flex' : 'hidden lg:flex'
+        }`}>
           <div className="w-full max-w-[280px] bg-slate-900 rounded-[40px] p-3 shadow-2xl border-4 border-slate-700 relative">
             {/* Phone Speaker & Camera Notch */}
             <div className="w-24 h-4 bg-slate-800 rounded-full mx-auto mb-2 flex items-center justify-center">
@@ -196,7 +233,9 @@ export const AlertsPage: React.FC = () => {
         </div>
 
         {/* Right: Manual SMS Dispatch Simulator (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+        <div className={`lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4 ${
+          mobileTab === 'DISPATCH' ? 'block' : 'hidden lg:block'
+        }`}>
           <div>
             <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <Smartphone className="w-4 h-4 text-hospital-600" />
