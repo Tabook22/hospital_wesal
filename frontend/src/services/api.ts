@@ -2,7 +2,8 @@ import {
   User, Patient, PatientCapacityStatus, Visitor, VisitorDetail,
   Visit, VisitorPass, ScanResult, DashboardData, NotificationItem,
   PolicySettings, TodayReport, WardReportItem, DenialReportItem,
-  CurrentLiveReport, AuditLogItem
+  CurrentLiveReport, AuditLogItem,
+  VisitorPatientSearchItem, VisitorPassBookRequest, VisitorPassDetail, VisitorRegisterRequest
 } from '../types';
 
 const getApiBase = () => {
@@ -150,4 +151,23 @@ export const api = {
     params.append('limit', limit.toString());
     return request<AuditLogItem[]>(`/audit-logs?${params.toString()}`);
   },
+
+  // Visitor Portal (Self-Service Tier 2)
+  registerVisitor: (data: VisitorRegisterRequest) =>
+    request<{ access_token: string; role: string; full_name: string; username: string }>('/visitor/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  searchVisitorPatients: (q?: string) => {
+    const params = new URLSearchParams();
+    if (q) params.append('q', q);
+    return request<VisitorPatientSearchItem[]>(`/visitor/patients/search?${params.toString()}`);
+  },
+  bookVisitorPass: (data: VisitorPassBookRequest) =>
+    request<VisitorPassDetail>('/visitor/passes/book', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getMyVisitorPasses: () =>
+    request<VisitorPassDetail[]>('/visitor/my-passes'),
 };

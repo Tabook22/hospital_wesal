@@ -116,7 +116,7 @@ async def create_visit(visit_in: VisitCreate, db: Session = Depends(get_db)):
         )
 
     # 4. Check Daily Visitor Limit for Patient
-    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
     today_count = db.query(Visit).filter(
         Visit.patient_id == patient.id,
         Visit.registered_at >= today_start

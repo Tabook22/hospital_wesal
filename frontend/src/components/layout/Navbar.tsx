@@ -4,7 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useLiveUpdates } from '../../hooks/useLiveUpdates';
 import {
   Shield, UserCheck, Stethoscope, LogOut, Radio, QrCode,
-  Sparkles, Building2, Globe, BookOpen, Menu
+  Sparkles, Building2, Globe, BookOpen, Menu, Users
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserRole } from '../../types';
@@ -130,11 +130,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMenu }) => {
                 </select>
               </div>
 
+              {/* Quick Link to Visitor Portal for Testing / Demonstration */}
+              <Link
+                to="/visitor"
+                className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition-colors"
+                title={lang === 'ar' ? 'عرض بوابة الزوار الذاتية' : 'View Visitor Self-Service Portal'}
+              >
+                <Users className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{lang === 'ar' ? 'بوابة الزوار' : 'Visitor Portal'}</span>
+              </Link>
+
               {/* Logout */}
               <button
                 onClick={() => {
                   logout();
-                  navigate('/login');
+                  navigate('/gateway');
                 }}
                 title={t('btn.signout')}
                 className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"

@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole } from '../types';
+import { User, UserRole, VisitorRegisterRequest } from '../types';
 import { api } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (username: string, role?: UserRole) => Promise<void>;
+  login: (username: string, password?: string) => Promise<void>;
+  registerVisitor: (data: VisitorRegisterRequest) => Promise<void>;
   logout: () => void;
   switchRole: (role: UserRole) => Promise<void>;
 }
@@ -34,8 +35,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token]);
 
-  const login = async (username: string) => {
-    const res = await api.login(username, 'wesal123');
+  const login = async (username: string, password?: string) => {
+    const res = await api.login(username, password || 'wesal123');
+    setToken(res.access_token);
+    localStorage.setItem('wesal_token', res.access_token);
+
+    const currentUser: User = {
+      id: 1,
+      username: res.username,
+      full_name: res.full_name,
+      role: res.role as UserRole,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    };
+    setUser(currentUser);
+    localStorage.setItem('wesal_user', JSON.stringify(currentUser));
+  };
+
+  const registerVisitor = async (data: VisitorRegisterRequest) => {
+    const res = await api.registerVisitor(data);
     setToken(res.access_token);
     localStorage.setItem('wesal_token', res.access_token);
 
@@ -69,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isAuthenticated: !!token && !!user,
         login,
+        registerVisitor,
         logout,
         switchRole,
       }}

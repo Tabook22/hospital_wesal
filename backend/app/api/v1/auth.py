@@ -26,6 +26,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
 
+def require_staff_user(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role == "VISITOR":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Hospital staff privileges required."
+        )
+    return current_user
+
 @router.post("/login", response_model=Token)
 def login(login_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == login_data.username.lower().strip()).first()

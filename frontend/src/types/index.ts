@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'RECEPTION' | 'SECURITY' | 'MANAGEMENT';
+export type UserRole = 'ADMIN' | 'RECEPTION' | 'SECURITY' | 'MANAGEMENT' | 'VISITOR';
 
 export interface User {
   id: number;
@@ -274,3 +274,56 @@ export interface AuditLogItem {
   details_json?: string;
   ip_address?: string;
 }
+
+export interface VisitorPatientSearchItem {
+  id: number;
+  hospital_number: string;
+  full_name: string;
+  ward_name: string;
+  room_number: string;
+  bed: string;
+  admission_status: string;
+  can_admit_visitor: boolean;
+  current_concurrent_visitors: number;
+  max_concurrent_visitors: number;
+  visiting_hours: string;
+}
+
+export interface VisitorPassBookRequest {
+  patient_id: number;
+  visitor_type?: string;
+  duration_minutes?: number;
+  notes?: string;
+}
+
+export interface VisitorPassDetail {
+  visit_id: number;
+  visit_number: string;
+  pass_code: string;
+  secure_token: string;
+  qr_payload: string;
+  qr_image_base64: string;
+  visitor_name: string;
+  visitor_civil_id: string;
+  visitor_mobile: string;
+  visitor_type: string;
+  patient_name: string;
+  patient_hospital_number: string;
+  ward_name: string;
+  room_number: string;
+  bed: string;
+  valid_from: string;
+  valid_until: string;
+  max_duration_minutes: number;
+  status: string;
+  generated_at: string;
+}
+
+export interface VisitorRegisterRequest {
+  full_name: string;
+  username: string;
+  password: string;
+  mobile_number: string;
+  civil_id: string;
+}
+

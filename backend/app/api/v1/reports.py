@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get("/today", response_model=TodayReportResponse)
 def get_today_report(db: Session = Depends(get_db)):
     evaluate_all_active_visits(db)
-    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
 
     total_registered = db.query(Visit).filter(Visit.registered_at >= today_start).count()
     
@@ -60,7 +60,7 @@ def get_today_report(db: Session = Depends(get_db)):
 @router.get("/wards", response_model=List[WardReportItem])
 def get_ward_report(db: Session = Depends(get_db)):
     evaluate_all_active_visits(db)
-    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
     wards = db.query(Ward).all()
 
     items = []
@@ -93,7 +93,7 @@ def get_ward_report(db: Session = Depends(get_db)):
 
 @router.get("/denials", response_model=List[DenialReportItem])
 def get_denial_report(db: Session = Depends(get_db)):
-    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
     denials = db.query(
         ScanEvent.denial_reason, func.count(ScanEvent.id)
     ).filter(

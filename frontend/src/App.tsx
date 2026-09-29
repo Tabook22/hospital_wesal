@@ -5,7 +5,13 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { Layout } from './components/layout/Layout';
 
-// Pages
+// Public Gateway & Onboarding Pages
+import { SplashScreen } from './pages/SplashScreen';
+import { RoleSelectionPage } from './pages/RoleSelectionPage';
+import { VisitorAuthPage } from './pages/VisitorAuthPage';
+import { VisitorPortalPage } from './pages/VisitorPortalPage';
+
+// Staff Pages (Tier 1)
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ReceptionPage } from './pages/ReceptionPage';
@@ -31,12 +37,37 @@ const queryClient = new QueryClient({
   },
 });
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+// Guard: Tier 1 Hospital Staff Only (Blocks Visitors)
+const StaffRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/gateway" replace />;
+  }
+  if (user?.role === 'VISITOR') {
+    return <Navigate to="/visitor" replace />;
   }
   return <>{children}</>;
+};
+
+// Guard: Tier 2 Visitor Portal Only (Requires Auth)
+const VisitorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/visitor-auth" replace />;
+  }
+  return <>{children}</>;
+};
+
+// Fallback resolver based on authentication and role
+const FallbackRoute: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/gateway" replace />;
+  }
+  if (user?.role === 'VISITOR') {
+    return <Navigate to="/visitor" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
 };
 
 export const App: React.FC = () => {
@@ -48,18 +79,36 @@ export const App: React.FC = () => {
         <AuthProvider>
           <BrowserRouter basename={basename}>
             <Routes>
+              {/* Step 1: Splash Screen */}
+              <Route path="/" element={<SplashScreen />} />
+
+              {/* Step 2: Role Selection Gate */}
+              <Route path="/gateway" element={<RoleSelectionPage />} />
+
+              {/* Step 3A: Staff Authentication */}
               <Route path="/login" element={<LoginPage />} />
 
-              {/* Authenticated Layout */}
+              {/* Step 3B: Visitor Authentication */}
+              <Route path="/visitor-auth" element={<VisitorAuthPage />} />
+
+              {/* Tier 2: Visitor Self-Service Portal */}
               <Route
-                path="/"
+                path="/visitor"
                 element={
-                  <ProtectedRoute>
+                  <VisitorRoute>
+                    <VisitorPortalPage />
+                  </VisitorRoute>
+                }
+              />
+
+              {/* Tier 1: Hospital Staff Console (Full CRUD & Access Operations) */}
+              <Route
+                element={
+                  <StaffRoute>
                     <Layout />
-                  </ProtectedRoute>
+                  </StaffRoute>
                 }
               >
-                <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="reception" element={<ReceptionPage />} />
                 <Route path="passes" element={<VisitorPassPage />} />
@@ -77,7 +126,7 @@ export const App: React.FC = () => {
               </Route>
 
               {/* Fallback */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<FallbackRoute />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>

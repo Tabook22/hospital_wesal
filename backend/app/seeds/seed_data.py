@@ -23,8 +23,36 @@ def seed_database():
     db = SessionLocal()
 
     # Check if already seeded
-    if db.query(User).first():
-        print("Database already contains records. Skipping seed.")
+    existing_user = db.query(User).first()
+    if existing_user:
+        # Ensure demo visitor account exists even on already seeded databases
+        visitor_user = db.query(User).filter(User.username == "visitor").first()
+        if not visitor_user:
+            pw_hash = get_password_hash("wesal123")
+            demo_visitor = User(
+                username="visitor",
+                hashed_password=pw_hash,
+                full_name="Ahmed Al-Harthi",
+                role="VISITOR",
+                is_active=True
+            )
+            db.add(demo_visitor)
+            
+            # Also ensure matching visitor profile exists
+            vis_profile = db.query(Visitor).filter(Visitor.civil_id == "71829304").first()
+            if not vis_profile:
+                vis_profile = Visitor(
+                    full_name="Ahmed Al-Harthi",
+                    civil_id="71829304",
+                    mobile_number="+968 9123 4567",
+                    visitor_type="VISITOR",
+                    created_at=datetime.utcnow()
+                )
+                db.add(vis_profile)
+            db.commit()
+            print("Added demo visitor user to existing database.")
+            
+        print("Database already contains records. Skipping full seed.")
         db.close()
         return
 
@@ -36,7 +64,8 @@ def seed_database():
         User(username="admin", hashed_password=pw_hash, full_name="Dr. Hamad Al-Harthy", role="ADMIN"),
         User(username="reception", hashed_password=pw_hash, full_name="Fatima Al-Mashani", role="RECEPTION"),
         User(username="security", hashed_password=pw_hash, full_name="Sultan Al-Rawas", role="SECURITY"),
-        User(username="management", hashed_password=pw_hash, full_name="Director Talal Al-Balooshi", role="MANAGEMENT")
+        User(username="management", hashed_password=pw_hash, full_name="Director Talal Al-Balooshi", role="MANAGEMENT"),
+        User(username="visitor", hashed_password=pw_hash, full_name="Ahmed Al-Harthi", role="VISITOR")
     ]
     db.add_all(users)
     db.commit()

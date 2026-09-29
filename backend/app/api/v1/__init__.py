@@ -12,10 +12,12 @@ from app.api.v1.reports import router as reports_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.ws import router as ws_router
+from app.api.v1.visitor_portal import router as visitor_router
 
 api_router = APIRouter()
 
 api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(visitor_router, prefix="/visitor", tags=["Visitor Portal"])
 api_router.include_router(patients_router, prefix="/patients", tags=["Patients"])
 api_router.include_router(visitors_router, prefix="/visitors", tags=["Visitors"])
 api_router.include_router(visits_router, prefix="/visits", tags=["Visits"])

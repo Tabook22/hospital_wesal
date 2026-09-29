@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Lock, User, Building2, Sparkles, CheckCircle2, ArrowRight, Languages } from 'lucide-react';
+import { Shield, Lock, User, Building2, Sparkles, CheckCircle2, ArrowRight, ArrowLeft, Languages } from 'lucide-react';
 import { UserRole } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -43,8 +43,17 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-slate-50 to-hospital-50/40 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 relative">
-      {/* Language Switcher in Top Corner */}
-      <div className="absolute top-4 sm:top-6 right-4 sm:right-6 rtl:right-auto rtl:left-4 sm:rtl:left-6">
+      {/* Top Header Bar */}
+      <div className="absolute top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-6 flex items-center justify-between pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => navigate('/gateway')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-180" />
+          <span>{lang === 'ar' ? 'بوابة الأدوار' : 'Role Gate'}</span>
+        </button>
+
         <button
           type="button"
           onClick={toggleLang}

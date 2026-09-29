@@ -17,7 +17,7 @@ def enrich_patient(patient: Patient, db: Session) -> PatientResponse:
     ).count()
 
     # Total visitors today
-    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
     today_count = db.query(Visit).filter(
         Visit.patient_id == patient.id,
         Visit.registered_at >= today_start
@@ -92,7 +92,7 @@ def get_patient_capacity(id: int, db: Session = Depends(get_db)):
         Visit.status.in_(["ACTIVE", "ENDING_SOON", "OVERDUE"])
     ).count()
 
-    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
     today_count = db.query(Visit).filter(
         Visit.patient_id == patient.id,
         Visit.registered_at >= today_start

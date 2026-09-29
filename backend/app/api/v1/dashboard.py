@@ -18,7 +18,7 @@ def get_dashboard_live(db: Session = Depends(get_db)):
     # 1. Update statuses first
     evaluate_all_active_visits(db)
 
-    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
 
     # KPIs
     active_visits = db.query(Visit).filter(
