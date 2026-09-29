@@ -1,6 +1,8 @@
-﻿import sqlite3
+import os
+import sqlite3
 
-conn = sqlite3.connect('backend/wesal.db')
+db_path = os.path.join(os.path.dirname(__file__), 'wesal.db')
+conn = sqlite3.connect(db_path)
 cur = conn.cursor()
 queries = [
     "ALTER TABLE patients ADD COLUMN visitation_category VARCHAR(20) DEFAULT 'ALLOWED'",
