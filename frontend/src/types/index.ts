@@ -279,6 +279,7 @@ export interface VisitorPatientSearchItem {
   id: number;
   hospital_number: string;
   full_name: string;
+  arabic_name?: string;
   ward_name: string;
   room_number: string;
   bed: string;

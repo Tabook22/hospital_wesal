@@ -13,6 +13,7 @@ class VisitorPatientSearchItem(BaseModel):
     id: int
     hospital_number: str
     full_name: str
+    arabic_name: Optional[str] = None
     ward_name: str
     room_number: str
     bed: str

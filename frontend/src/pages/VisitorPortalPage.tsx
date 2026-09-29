@@ -11,6 +11,25 @@ import { useLanguage } from '../context/LanguageContext';
 import { api } from '../services/api';
 import { VisitorPatientSearchItem, VisitorPassDetail } from '../types';
 
+const getLocalizedWard = (wardName: string, lang: string) => {
+  if (lang !== 'ar') return wardName;
+  const map: Record<string, string> = {
+    'Medical Ward A': 'جناح الباطنية (أ)',
+    'Medical Ward B': 'جناح الباطنية (ب)',
+    'Surgical Ward': 'جناح الجراحة',
+    'Intensive Care Unit (ICU)': 'العناية المركزة (ICU)',
+    'Pediatric Ward': 'جناح الأطفال',
+  };
+  return map[wardName] || wardName;
+};
+
+const getLocalizedRoomBed = (room: string, bed: string, lang: string) => {
+  if (lang !== 'ar') return `${room} — ${bed}`;
+  const cleanRoom = room.replace(/^Room\s*/i, 'غرفة ').replace(/^ICU-/i, 'سرير عناية ');
+  const cleanBed = bed.replace(/^Bed\s*/i, 'سرير ');
+  return `${cleanRoom} — ${cleanBed}`;
+};
+
 export const VisitorPortalPage: React.FC = () => {
   const { lang, toggleLang } = useLanguage();
   const { user, logout } = useAuth();
@@ -231,89 +250,122 @@ export const VisitorPortalPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {patients.map((p) => (
-                    <div
-                      key={p.id}
-                      className={`bg-white rounded-2xl p-5 border-2 transition-all flex flex-col justify-between ${
-                        selectedPatient?.id === p.id
-                          ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md'
-                          : 'border-slate-200 hover:border-slate-300 shadow-sm'
-                      }`}
-                    >
-                      <div className="space-y-3">
-                        {/* Header: Name & Status Badge */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="font-bold text-slate-900 text-sm">{p.full_name}</h3>
-                            <span className="text-[11px] font-mono text-slate-400">MRN: {p.hospital_number}</span>
+                  {patients.map((p) => {
+                    const isFull = !p.can_admit_visitor || p.current_concurrent_visitors >= p.max_concurrent_visitors;
+                    const displayName = lang === 'ar' && p.arabic_name ? p.arabic_name : p.full_name;
+                    const secondaryName = lang === 'ar' && p.arabic_name ? p.full_name : null;
+
+                    return (
+                      <div
+                        key={p.id}
+                        className={`bg-white rounded-2xl p-5 border-2 transition-all flex flex-col justify-between ${
+                          isFull
+                            ? 'border-slate-200 bg-slate-50/50 shadow-sm opacity-95'
+                            : selectedPatient?.id === p.id
+                            ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md'
+                            : 'border-slate-200 hover:border-slate-300 shadow-sm'
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          {/* Header: Name & Status Badge */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h3 className="font-bold text-slate-900 text-sm leading-snug">{displayName}</h3>
+                              {secondaryName && (
+                                <div className="text-[11px] text-slate-500 font-medium">{secondaryName}</div>
+                              )}
+                              <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                                MRN: <span dir="ltr">{p.hospital_number}</span>
+                              </span>
+                            </div>
+
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 ${
+                                isFull
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {!isFull ? (
+                                <>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span>{lang === 'ar' ? 'متاح للزيارة' : 'Available'}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                  <span>{lang === 'ar' ? 'سعة مكتملة' : 'Capacity Full'}</span>
+                                </>
+                              )}
+                            </span>
                           </div>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                              p.can_admit_visitor
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-rose-100 text-rose-800'
+
+                          {/* Location Details */}
+                          <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 text-xs text-slate-600 border border-slate-100">
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">{lang === 'ar' ? 'الجناح الطبي:' : 'Ward:'}</span>
+                              <span className="font-semibold text-slate-800">{getLocalizedWard(p.ward_name, lang)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">{lang === 'ar' ? 'الغرفة والسرير:' : 'Room & Bed:'}</span>
+                              <span className="font-medium text-slate-800">{getLocalizedRoomBed(p.room_number, p.bed, lang)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">{lang === 'ar' ? 'الزوار عند السرير حالياً:' : 'Current Visitors:'}</span>
+                              <span
+                                dir="ltr"
+                                className={`font-bold font-mono px-2 py-0.5 rounded-md text-xs ${
+                                  isFull ? 'bg-rose-100 text-rose-700' : 'bg-slate-200/70 text-slate-800'
+                                }`}
+                              >
+                                {p.current_concurrent_visitors} / {p.max_concurrent_visitors}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Visiting Hours */}
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-hospital-600 shrink-0" />
+                            <span>{lang === 'ar' ? 'مواعيد الزيارة اليوم:' : 'Visiting Hours:'}</span>
+                            <span dir="ltr" className="font-mono font-semibold text-slate-700 inline-block">{p.visiting_hours}</span>
+                          </div>
+                        </div>
+
+                        {/* Select Action Button */}
+                        <div className="pt-4">
+                          <button
+                            type="button"
+                            disabled={isFull}
+                            onClick={() => !isFull && setSelectedPatient(p)}
+                            className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                              isFull
+                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                                : selectedPatient?.id === p.id
+                                ? 'bg-emerald-600 text-white shadow-sm'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 hover:text-emerald-800'
                             }`}
                           >
-                            {p.can_admit_visitor ? (
+                            {isFull ? (
                               <>
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                {lang === 'ar' ? 'متاح للزيارة' : 'Available'}
+                                <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                                <span>{lang === 'ar' ? 'سعة السرير مكتملة (تعذر الحجز)' : 'Bedside Full (Locked)'}</span>
+                              </>
+                            ) : selectedPatient?.id === p.id ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>{lang === 'ar' ? 'المريض محدد للزيارة' : 'Patient Selected'}</span>
                               </>
                             ) : (
                               <>
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                                {lang === 'ar' ? 'سعة مكتملة' : 'Capacity Full'}
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>{lang === 'ar' ? 'تحديد وإصدار التصريح' : 'Select Patient'}</span>
                               </>
                             )}
-                          </span>
-                        </div>
-
-                        {/* Location Details */}
-                        <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 text-xs text-slate-600">
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">{lang === 'ar' ? 'الجناح الطبي:' : 'Ward:'}</span>
-                            <span className="font-semibold text-slate-800">{p.ward_name}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">{lang === 'ar' ? 'الغرفة والسرير:' : 'Room & Bed:'}</span>
-                            <span className="font-mono font-semibold text-slate-800">{p.room_number} — {p.bed}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">{lang === 'ar' ? 'الزوار عند السرير حالياً:' : 'Current Visitors:'}</span>
-                            <span className="font-bold text-slate-800 font-mono">
-                              {p.current_concurrent_visitors} / {p.max_concurrent_visitors}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Visiting Hours */}
-                        <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-hospital-600" />
-                          <span>{lang === 'ar' ? 'مواعيد الزيارة اليوم:' : 'Visiting Hours:'} {p.visiting_hours}</span>
+                          </button>
                         </div>
                       </div>
-
-                      {/* Select Action Button */}
-                      <div className="pt-4">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPatient(p)}
-                          className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
-                            selectedPatient?.id === p.id
-                              ? 'bg-emerald-600 text-white shadow-sm'
-                              : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
-                          }`}
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>
-                            {selectedPatient?.id === p.id
-                              ? (lang === 'ar' ? 'المريض محدد للزيارة' : 'Patient Selected')
-                              : (lang === 'ar' ? 'تحديد وإصدار التصريح' : 'Select Patient')}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -100,6 +100,48 @@ def register_visitor(reg: VisitorRegisterRequest, db: Session = Depends(get_db))
         "role": new_user.role
     }
 
+ARABIC_PATIENT_NAMES = {
+    "Ahmed Mohammed Al-Hakim": "أحمد محمد الحكيم",
+    "Salim Said Al-Shanfari": "سالم سعيد الشنفري",
+    "Maryam Bint Salim Al-Kathiri": "مريم بنت سالم الكثيري",
+    "Khalid Nasser Al-Amri": "خالد ناصر العامري",
+    "Fatima Ali Al-Ghafri": "فاطمة علي الغافري",
+    "Saeed Bakhit Al-Mahri": "سعيد بخيت المهري",
+    "Zahra Ahmed Al-Rawas": "زهراء أحمد الرواس",
+    "Mubarak Suhail Tabook": "مبارك سهيل تبوك",
+    "Hamad Salem Al-Shuhri": "حمد سالم الشهري",
+    "Aisha Juma Al-Washahi": "عائشة جمعة الوشاحي",
+    "Omar Khalfan Al-Siyabi": "عمر خلفان السيابي",
+    "Salma Bint Ahmed Al-Yafai": "سلمى بنت أحمد اليافعي",
+    "Fahad Saud Al-Busaidi": "فهد سعود البوسعيدي",
+    "Reem Rashid Al-Saadi": "ريم راشد الساعدي",
+    "Majid Sultan Al-Kindi": "ماجد سلطان الكندي",
+    "Nasser Abdullah Al-Maamari": "ناصر عبدالله المعمري",
+    "Huda Mansoor Al-Hadhrami": "هدى منصور الحضرمي",
+    "Tariq Zaid Al-Balushi": "طارق زيد البلوشي",
+    "Asma Hilal Al-Habsi": "أسماء هلال الحبسية",
+    "Bader Masoud Al-Farsi": "بدر مسعود الفارسي",
+}
+
+ARABIC_QUERY_MAP = {
+    "احمد": "Ahmed", "أحمد": "Ahmed", "محمد": "Mohammed", "الحكيم": "Hakim",
+    "سالم": "Salim", "سعيد": "Said", "الشنفري": "Shanfari",
+    "مريم": "Maryam", "الكثيري": "Kathiri", "خالد": "Khalid",
+    "ناصر": "Nasser", "العامري": "Amri", "فاطمة": "Fatima", "فاطمه": "Fatima",
+    "الغافري": "Ghafri", "بخيت": "Bakhit", "المهري": "Mahri",
+    "زهراء": "Zahra", "الرواس": "Rawas", "مبارك": "Mubarak",
+    "سهيل": "Suhail", "تبوك": "Tabook", "حمد": "Hamad", "الشهري": "Shuhri",
+    "عائشة": "Aisha", "عائشه": "Aisha", "جمعة": "Juma", "الوشاحي": "Washahi",
+    "عمر": "Omar", "خلفان": "Khalfan", "السيابي": "Siyabi",
+    "سلمى": "Salma", "اليافعي": "Yafai", "فهد": "Fahad", "سعود": "Saud",
+    "البوسعيدي": "Busaidi", "ريم": "Reem", "راشد": "Rashid",
+    "الساعدي": "Saadi", "ماجد": "Majid", "سلطان": "Sultan", "الكندي": "Kindi",
+    "عبدالله": "Abdullah", "المعمري": "Maamari", "هدى": "Huda",
+    "منصور": "Mansoor", "الحضرمي": "Hadhrami", "طارق": "Tariq",
+    "زيد": "Zaid", "البلوشي": "Balushi", "اسماء": "Asma", "أسماء": "Asma",
+    "هلال": "Hilal", "الحبسي": "Habsi", "بدر": "Bader", "مسعود": "Masoud", "الفارسي": "Farsi"
+}
+
 @router.get("/patients/search", response_model=List[VisitorPatientSearchItem])
 def search_patients_for_visitor(
     q: Optional[str] = Query(None, description="Patient name, MRN, or civil ID"),
@@ -108,14 +150,25 @@ def search_patients_for_visitor(
     query = db.query(Patient).filter(Patient.admission_status == "ADMITTED")
 
     if q and q.strip():
-        clean_q = f"%{q.strip()}%"
-        query = query.filter(
-            or_(
-                Patient.full_name.ilike(clean_q),
-                Patient.hospital_number.ilike(clean_q),
-                Patient.civil_id.ilike(clean_q)
-            )
-        )
+        raw_q = q.strip()
+        clean_q = f"%{raw_q}%"
+        
+        # Check if Arabic words present in query
+        translated_terms = []
+        for word in raw_q.split():
+            clean_word = word.strip()
+            if clean_word in ARABIC_QUERY_MAP:
+                translated_terms.append(f"%{ARABIC_QUERY_MAP[clean_word]}%")
+        
+        filter_conditions = [
+            Patient.full_name.ilike(clean_q),
+            Patient.hospital_number.ilike(clean_q),
+            Patient.civil_id.ilike(clean_q)
+        ]
+        for term in translated_terms:
+            filter_conditions.append(Patient.full_name.ilike(term))
+
+        query = query.filter(or_(*filter_conditions))
 
     patients = query.limit(25).all()
     policy = db.query(VisitPolicy).first()
@@ -134,6 +187,7 @@ def search_patients_for_visitor(
                 id=p.id,
                 hospital_number=p.hospital_number,
                 full_name=p.full_name,
+                arabic_name=ARABIC_PATIENT_NAMES.get(p.full_name),
                 ward_name=p.ward.name if p.ward else "General Ward",
                 room_number=p.room.room_number if p.room else "N/A",
                 bed=p.bed or "B1",
