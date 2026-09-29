@@ -280,10 +280,13 @@ export interface VisitorPatientSearchItem {
   hospital_number: string;
   full_name: string;
   arabic_name?: string;
+  masked_name: string;
+  masked_arabic_name?: string;
   ward_name: string;
   room_number: string;
   bed: string;
   admission_status: string;
+  visitation_category: 'ALLOWED' | 'LIMITED' | 'PROHIBITED';
   can_admit_visitor: boolean;
   current_concurrent_visitors: number;
   max_concurrent_visitors: number;
@@ -293,6 +296,7 @@ export interface VisitorPatientSearchItem {
 export interface VisitorPassBookRequest {
   patient_id: number;
   visitor_type?: string;
+  relationship?: string;
   duration_minutes?: number;
   notes?: string;
 }
@@ -308,6 +312,10 @@ export interface VisitorPassDetail {
   visitor_civil_id: string;
   visitor_mobile: string;
   visitor_type: string;
+  relationship?: string;
+  approval_status?: string;
+  visitation_category?: string;
+  rejection_reason?: string;
   patient_name: string;
   patient_hospital_number: string;
   ward_name: string;
@@ -318,6 +326,25 @@ export interface VisitorPassDetail {
   max_duration_minutes: number;
   status: string;
   generated_at: string;
+}
+
+export interface PendingVisitRequest {
+  visit_id: number;
+  visit_number: string;
+  visitor_name: string;
+  visitor_civil_id: string;
+  visitor_mobile: string;
+  visitor_relationship?: string;
+  patient_id: number;
+  patient_name: string;
+  patient_hospital_number: string;
+  ward_name: string;
+  room_number: string;
+  visitation_category: string;
+  approval_status: string;
+  registered_at: string;
+  valid_from: string;
+  valid_until: string;
 }
 
 export interface VisitorRegisterRequest {

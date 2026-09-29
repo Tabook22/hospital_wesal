@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search, Shield, Users, QrCode, Clock, Calendar, CheckCircle2,
   AlertTriangle, XCircle, Printer, ArrowLeft, LogOut, Building2,
-  Sparkles, RefreshCw, UserCheck, HeartHandshake, Eye, AlertCircle
+  Sparkles, RefreshCw, UserCheck, HeartHandshake, Eye, AlertCircle,
+  Lock, Hourglass, ShieldAlert, Check, UserPlus
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -41,6 +42,7 @@ export const VisitorPortalPage: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<VisitorPatientSearchItem | null>(null);
 
   // Visit Booking Form state
+  const [relationship, setRelationship] = useState<string>('FIRST_DEGREE');
   const [visitorType, setVisitorType] = useState<'VISITOR' | 'COMPANION'>('VISITOR');
   const [durationMinutes, setDurationMinutes] = useState<number>(20);
   const [bookingNotes, setBookingNotes] = useState('');
@@ -55,7 +57,7 @@ export const VisitorPortalPage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // 1. Search Admitted Patients Query
+  // 1. Search Admitted Patients Query (only enabled when searchQuery length >= 2)
   const {
     data: patients = [],
     isLoading: isLoadingPatients,
@@ -63,9 +65,10 @@ export const VisitorPortalPage: React.FC = () => {
   } = useQuery<VisitorPatientSearchItem[]>({
     queryKey: ['visitor-patients-search', searchQuery],
     queryFn: () => api.searchVisitorPatients(searchQuery),
+    enabled: searchQuery.trim().length >= 2,
   });
 
-  // 2. Fetch My Passes Query
+  // 2. Fetch My Passes Query (auto-poll every 4 seconds to catch receptionist approvals live)
   const {
     data: myPasses = [],
     isLoading: isLoadingPasses,
@@ -73,18 +76,26 @@ export const VisitorPortalPage: React.FC = () => {
   } = useQuery<VisitorPassDetail[]>({
     queryKey: ['visitor-my-passes'],
     queryFn: () => api.getMyVisitorPasses(),
+    refetchInterval: 4000,
   });
 
-  // Set the latest pass if available and none selected
+  // Update activePass reference when myPasses changes (e.g. from PENDING to ACTIVE)
   useEffect(() => {
-    if (myPasses.length > 0 && !activePass) {
-      setActivePass(myPasses[0]);
+    if (myPasses.length > 0) {
+      if (!activePass) {
+        setActivePass(myPasses[0]);
+      } else {
+        const updated = myPasses.find((p) => p.visit_id === activePass.visit_id);
+        if (updated && (updated.status !== activePass.status || updated.approval_status !== activePass.approval_status)) {
+          setActivePass(updated);
+        }
+      }
     }
-  }, [myPasses]);
+  }, [myPasses, activePass]);
 
   // 3. Book Visit Pass Mutation
   const bookPassMutation = useMutation({
-    mutationFn: (data: { patient_id: number; visitor_type: string; duration_minutes: number; notes?: string }) =>
+    mutationFn: (data: { patient_id: number; visitor_type: string; relationship: string; duration_minutes: number; notes?: string }) =>
       api.bookVisitorPass(data),
     onSuccess: (newPass) => {
       setActivePass(newPass);
@@ -101,6 +112,7 @@ export const VisitorPortalPage: React.FC = () => {
     bookPassMutation.mutate({
       patient_id: selectedPatient.id,
       visitor_type: visitorType,
+      relationship: relationship,
       duration_minutes: durationMinutes,
       notes: bookingNotes || undefined,
     });
@@ -200,13 +212,17 @@ export const VisitorPortalPage: React.FC = () => {
             {/* Search Input Box */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
               <div className="max-w-xl">
+                <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs uppercase tracking-wider mb-1">
+                  <Shield className="w-4 h-4" />
+                  <span>{lang === 'ar' ? 'البحث المحمي بالخصوصية الطبية' : 'Privacy-Protected Inpatient Search'}</span>
+                </div>
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900">
-                  {lang === 'ar' ? 'البحث عن مريض منوم' : 'Search Admitted Inpatient'}
+                  {lang === 'ar' ? 'البحث عن مريض منوم وطلب زيارة' : 'Search Admitted Inpatient & Request Visit'}
                 </h2>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                   {lang === 'ar'
-                    ? 'ابحث باسم المريض أو رقمه المدني لمعرفة موقعه والتحقق الفوري من إمكانية الزيارة وسعة السرير'
-                    : 'Search by patient name or civil ID to check real-time bedside capacity and request a visit token.'}
+                    ? 'لحماية خصوصية المرضى وسرية بياناتهم، لا تُعرض قائمة المرضى تلقائياً. يرجى إدخال اسم المريض أو رقم الملف الطبي (MRN) للتحقق من إمكانية الزيارة.'
+                    : 'To uphold patient confidentiality, patient names are shielded. Search by patient name or Medical Record Number (MRN) to verify bedside visitation eligibility.'}
                 </p>
               </div>
 
@@ -218,171 +234,254 @@ export const VisitorPortalPage: React.FC = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={
                     lang === 'ar'
-                      ? 'اكتب اسم المريض (مثال: سالم، فاطمة، سعيد)...'
-                      : 'Type patient name (e.g. Salim, Fatima, Said)...'
+                      ? 'اكتب اسم المريض أو رقم الملف (مثال: P00022 أو سالم أو فاطمة)...'
+                      : 'Type patient name or MRN (e.g. P00022, Salim, Fatima)...'
                   }
-                  className="w-full pl-12 rtl:pl-4 rtl:pr-12 pr-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-0 text-sm shadow-sm transition-all"
+                  className="w-full pl-12 rtl:pl-4 rtl:pr-12 pr-4 py-3.5 rounded-2xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-0 text-sm shadow-sm transition-all"
                 />
               </div>
             </div>
 
-            {/* Patients Results Grid */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-bold text-slate-700">
-                  {lang === 'ar' ? `المرضى المنومون المتوفرون (${patients.length})` : `Admitted Patients (${patients.length})`}
-                </span>
-                <span>
-                  {lang === 'ar' ? 'يتم تحديث سعة الغرف فورياً' : 'Bedside capacities update in real-time'}
-                </span>
+            {/* Patients Results Grid or Privacy Initial Shield */}
+            {searchQuery.trim().length < 2 ? (
+              <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border-2 border-dashed border-slate-200 max-w-2xl mx-auto space-y-4 shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center border border-emerald-100 shadow-sm">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-slate-900">
+                    {lang === 'ar' ? 'بيانات المرضى المنومين محمية ومحجوبة' : 'Inpatient Data Strictly Protected'}
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                    {lang === 'ar'
+                      ? 'وفقاً لسياسة وزارة الصحة لحماية خصوصية المرضى، ابحث مباشرة باسم المريض أو رقم ملفه للوصول إلى بيانات الزيارة وتحديد صلة القرابة.'
+                      : 'In accordance with MOH patient privacy standards, please enter at least 2 characters of the patient name or file number to view visitation status.'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2 pt-2 text-[11px] text-slate-600">
+                  <span className="font-semibold">{lang === 'ar' ? 'أمثلة للتجربة:' : 'Quick search demos:'}</span>
+                  <button
+                    onClick={() => setSearchQuery('P00022')}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-mono text-emerald-800 font-bold"
+                  >
+                    P00022 (مسموح)
+                  </button>
+                  <button
+                    onClick={() => setSearchQuery('P00021')}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-mono text-amber-800 font-bold"
+                  >
+                    P00021 (مشروط)
+                  </button>
+                  <button
+                    onClick={() => setSearchQuery('P00051')}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-mono text-rose-800 font-bold"
+                  >
+                    P00051 (ممنوع)
+                  </button>
+                </div>
               </div>
-
-              {isLoadingPatients ? (
-                <div className="py-12 text-center text-slate-400">
-                  <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-600" />
-                  <span className="text-xs">{lang === 'ar' ? 'جاري البحث في سجلات التنويم...' : 'Searching inpatient directory...'}</span>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-bold text-slate-700">
+                    {lang === 'ar' ? `نتائج البحث المتطابقة (${patients.length})` : `Matching Results (${patients.length})`}
+                  </span>
+                  <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
+                    <Shield className="w-3.5 h-3.5" />
+                    {lang === 'ar' ? 'الأسماء معماة لحماية الخصوصية' : 'Names masked for privacy'}
+                  </span>
                 </div>
-              ) : patients.length === 0 ? (
-                <div className="bg-white rounded-3xl p-8 text-center border border-slate-200 text-slate-500 text-xs">
-                  {lang === 'ar'
-                    ? 'لم يتم العثور على مريض منوم بهذا الاسم. يرجى التأكد من كتابة الاسم أو مراجعة الاستقبال'
-                    : 'No admitted patient found matching this query. Please check spelling or contact the reception desk.'}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {patients.map((p) => {
-                    const isFull = !p.can_admit_visitor || p.current_concurrent_visitors >= p.max_concurrent_visitors;
-                    const displayName = lang === 'ar' && p.arabic_name ? p.arabic_name : p.full_name;
-                    const secondaryName = lang === 'ar' && p.arabic_name ? p.full_name : null;
 
-                    return (
-                      <div
-                        key={p.id}
-                        className={`bg-white rounded-2xl p-5 border-2 transition-all flex flex-col justify-between ${
-                          isFull
-                            ? 'border-slate-200 bg-slate-50/50 shadow-sm opacity-95'
-                            : selectedPatient?.id === p.id
-                            ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md'
-                            : 'border-slate-200 hover:border-slate-300 shadow-sm'
-                        }`}
-                      >
-                        <div className="space-y-3">
-                          {/* Header: Name & Status Badge */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h3 className="font-bold text-slate-900 text-sm leading-snug">{displayName}</h3>
-                              {secondaryName && (
-                                <div className="text-[11px] text-slate-500 font-medium">{secondaryName}</div>
+                {isLoadingPatients ? (
+                  <div className="py-12 text-center text-slate-400">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-600" />
+                    <span className="text-xs">{lang === 'ar' ? 'جاري التحقق من السجلات والخصوصية...' : 'Verifying medical records...'}</span>
+                  </div>
+                ) : patients.length === 0 ? (
+                  <div className="bg-white rounded-3xl p-8 text-center border border-slate-200 text-slate-500 text-xs">
+                    {lang === 'ar'
+                      ? 'لم يتم العثور على مريض منوم يطابق هذا البحث. يرجى التأكد من رقم الملف أو الاسم، أو مراجعة كاونتر الاستقبال'
+                      : 'No admitted patient found matching this query. Please check MRN/name or visit the hospital reception desk.'}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {patients.map((p) => {
+                      const isFull = !p.can_admit_visitor || p.current_concurrent_visitors >= p.max_concurrent_visitors;
+                      const isProhibited = p.visitation_category === 'PROHIBITED';
+                      const isLimited = p.visitation_category === 'LIMITED';
+                      const displayName = lang === 'ar' && p.masked_arabic_name ? p.masked_arabic_name : p.masked_name;
+
+                      return (
+                        <div
+                          key={p.id}
+                          className={`bg-white rounded-2xl p-5 border-2 transition-all flex flex-col justify-between ${
+                            isProhibited
+                              ? 'border-rose-200 bg-rose-50/20'
+                              : isFull
+                              ? 'border-slate-200 bg-slate-50/50 opacity-95'
+                              : selectedPatient?.id === p.id
+                              ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md'
+                              : 'border-slate-200 hover:border-slate-300 shadow-sm'
+                          }`}
+                        >
+                          <div className="space-y-3">
+                            {/* Header: Masked Name & Privacy Badge */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                  <h3 className="font-bold text-slate-900 text-sm leading-snug tracking-wide">
+                                    {displayName}
+                                  </h3>
+                                </div>
+                                <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md inline-block mt-1 border border-emerald-100">
+                                  MRN: <span dir="ltr">{p.hospital_number}</span>
+                                </span>
+                              </div>
+
+                              {/* Category Status Pill */}
+                              {isProhibited ? (
+                                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 shrink-0">
+                                  <ShieldAlert className="w-3 h-3 text-rose-600" />
+                                  <span>{lang === 'ar' ? 'ممنوع الزيارة' : 'Prohibited'}</span>
+                                </span>
+                              ) : isLimited ? (
+                                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 shrink-0">
+                                  <Hourglass className="w-3 h-3 text-amber-600 animate-spin" />
+                                  <span>{lang === 'ar' ? 'مشروط بموافقة' : 'Requires Approval'}</span>
+                                </span>
+                              ) : isFull ? (
+                                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-200 text-slate-700 flex items-center gap-1 shrink-0">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                  <span>{lang === 'ar' ? 'سعة مكتملة' : 'Full'}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0">
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span>{lang === 'ar' ? 'مسموح الزيارة' : 'Allowed'}</span>
+                                </span>
                               )}
-                              <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
-                                MRN: <span dir="ltr">{p.hospital_number}</span>
-                              </span>
                             </div>
 
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 ${
-                                isFull
-                                  ? 'bg-rose-100 text-rose-800'
-                                  : 'bg-emerald-100 text-emerald-800'
+                            {/* Category Notice Alert */}
+                            {isProhibited && (
+                              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-800 font-semibold flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                                <span>{lang === 'ar' ? 'الزيارة محظورة طبياً حالياً حفاظاً على سلامة المريض' : 'Visits prohibited per doctor orders'}</span>
+                              </div>
+                            )}
+
+                            {isLimited && (
+                              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 font-medium flex items-center gap-2">
+                                <Hourglass className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>{lang === 'ar' ? 'يتطلب هذا القسم موافقة موظف الاستقبال بعد تقديم الطلب' : 'Requires reception review and approval'}</span>
+                              </div>
+                            )}
+
+                            {/* Location Details */}
+                            <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 text-xs text-slate-600 border border-slate-100">
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-400">{lang === 'ar' ? 'الجناح الطبي:' : 'Ward:'}</span>
+                                <span className="font-semibold text-slate-800">{getLocalizedWard(p.ward_name, lang)}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-400">{lang === 'ar' ? 'الغرفة والسرير:' : 'Room & Bed:'}</span>
+                                <span className="font-medium text-slate-800">{getLocalizedRoomBed(p.room_number, p.bed, lang)}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-400">{lang === 'ar' ? 'الزوار عند السرير حالياً:' : 'Current Visitors:'}</span>
+                                <span
+                                  dir="ltr"
+                                  className={`font-bold font-mono px-2 py-0.5 rounded-md text-xs ${
+                                    isFull ? 'bg-rose-100 text-rose-700' : 'bg-slate-200/70 text-slate-800'
+                                  }`}
+                                >
+                                  {p.current_concurrent_visitors} / {p.max_concurrent_visitors}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Visiting Hours */}
+                            <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>{lang === 'ar' ? 'أوقات الزيارة:' : 'Hours:'}</span>
+                              <span dir="ltr" className="font-mono font-semibold text-slate-700 inline-block">{p.visiting_hours}</span>
+                            </div>
+                          </div>
+
+                          {/* Select Action Button */}
+                          <div className="pt-4">
+                            <button
+                              type="button"
+                              disabled={isProhibited || isFull}
+                              onClick={() => !isProhibited && !isFull && setSelectedPatient(p)}
+                              className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                                isProhibited
+                                  ? 'bg-rose-50 text-rose-400 cursor-not-allowed border border-rose-200'
+                                  : isFull
+                                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                                  : selectedPatient?.id === p.id
+                                  ? 'bg-emerald-600 text-white shadow-sm'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 hover:text-emerald-800'
                               }`}
                             >
-                              {!isFull ? (
+                              {isProhibited ? (
                                 <>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                  <span>{lang === 'ar' ? 'متاح للزيارة' : 'Available'}</span>
+                                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                                  <span>{lang === 'ar' ? 'الزيارة محظورة طبياً' : 'Visits Prohibited'}</span>
+                                </>
+                              ) : isFull ? (
+                                <>
+                                  <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                                  <span>{lang === 'ar' ? 'سعة السرير مكتملة' : 'Bedside Full'}</span>
+                                </>
+                              ) : selectedPatient?.id === p.id ? (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>{lang === 'ar' ? 'تم اختيار المريض' : 'Patient Selected'}</span>
                                 </>
                               ) : (
                                 <>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                                  <span>{lang === 'ar' ? 'سعة مكتملة' : 'Capacity Full'}</span>
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>{lang === 'ar' ? 'طلب تصريح الزيارة' : 'Request Visit Pass'}</span>
                                 </>
                               )}
-                            </span>
-                          </div>
-
-                          {/* Location Details */}
-                          <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 text-xs text-slate-600 border border-slate-100">
-                            <div className="flex justify-between items-center">
-                              <span className="text-slate-400">{lang === 'ar' ? 'الجناح الطبي:' : 'Ward:'}</span>
-                              <span className="font-semibold text-slate-800">{getLocalizedWard(p.ward_name, lang)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-slate-400">{lang === 'ar' ? 'الغرفة والسرير:' : 'Room & Bed:'}</span>
-                              <span className="font-medium text-slate-800">{getLocalizedRoomBed(p.room_number, p.bed, lang)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-slate-400">{lang === 'ar' ? 'الزوار عند السرير حالياً:' : 'Current Visitors:'}</span>
-                              <span
-                                dir="ltr"
-                                className={`font-bold font-mono px-2 py-0.5 rounded-md text-xs ${
-                                  isFull ? 'bg-rose-100 text-rose-700' : 'bg-slate-200/70 text-slate-800'
-                                }`}
-                              >
-                                {p.current_concurrent_visitors} / {p.max_concurrent_visitors}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Visiting Hours */}
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-hospital-600 shrink-0" />
-                            <span>{lang === 'ar' ? 'مواعيد الزيارة اليوم:' : 'Visiting Hours:'}</span>
-                            <span dir="ltr" className="font-mono font-semibold text-slate-700 inline-block">{p.visiting_hours}</span>
+                            </button>
                           </div>
                         </div>
-
-                        {/* Select Action Button */}
-                        <div className="pt-4">
-                          <button
-                            type="button"
-                            disabled={isFull}
-                            onClick={() => !isFull && setSelectedPatient(p)}
-                            className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
-                              isFull
-                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                                : selectedPatient?.id === p.id
-                                ? 'bg-emerald-600 text-white shadow-sm'
-                                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 hover:text-emerald-800'
-                            }`}
-                          >
-                            {isFull ? (
-                              <>
-                                <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                                <span>{lang === 'ar' ? 'سعة السرير مكتملة (تعذر الحجز)' : 'Bedside Full (Locked)'}</span>
-                              </>
-                            ) : selectedPatient?.id === p.id ? (
-                              <>
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>{lang === 'ar' ? 'المريض محدد للزيارة' : 'Patient Selected'}</span>
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>{lang === 'ar' ? 'تحديد وإصدار التصريح' : 'Select Patient'}</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Step 2: Visit Token Booking Modal / Drawer */}
             {selectedPatient && (
               <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-emerald-500 shadow-xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex items-start justify-between border-b border-slate-100 pb-4">
                   <div>
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wider">
-                      {lang === 'ar' ? 'الخطوة 2: تأكيد بيانات وتوقيت الزيارة' : 'Step 2: Confirm Visit Timing'}
-                    </span>
-                    <h3 className="text-xl font-bold text-slate-900 mt-1">
-                      {selectedPatient.full_name}
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      {selectedPatient.ward_name} &bull; {selectedPatient.room_number} ({selectedPatient.bed})
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wider">
+                        {lang === 'ar' ? 'الخطوة 2: تحديد صلة القرابة وتوقيت الزيارة' : 'Step 2: Relationship & Visit Timing'}
+                      </span>
+                      {selectedPatient.visitation_category === 'LIMITED' && (
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                          {lang === 'ar' ? 'يتطلب موافقة الاستقبال' : 'Requires Reception Approval'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Lock className="w-4 h-4 text-slate-400" />
+                      <h3 className="text-xl font-bold text-slate-900">
+                        {lang === 'ar' && selectedPatient.masked_arabic_name ? selectedPatient.masked_arabic_name : selectedPatient.masked_name}
+                      </h3>
+                      <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                        MRN: {selectedPatient.hospital_number}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {getLocalizedWard(selectedPatient.ward_name, lang)} &bull; {getLocalizedRoomBed(selectedPatient.room_number, selectedPatient.bed, lang)}
                     </p>
                   </div>
 
@@ -402,6 +501,66 @@ export const VisitorPortalPage: React.FC = () => {
                 )}
 
                 <form onSubmit={handleBookSubmit} className="space-y-5">
+                  {/* Category Notice Banner */}
+                  {selectedPatient.visitation_category === 'LIMITED' ? (
+                    <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3">
+                      <Hourglass className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold">{lang === 'ar' ? 'طلب مشروط بموافقة موظف الاستقبال:' : 'Subject to Receptionist Approval:'}</div>
+                        <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                          {lang === 'ar'
+                            ? 'نظراً للطبيعة الطبية لهذا الجناح، سيتم إرسال طلبك فوراً لمكتب الاستقبال للاعتماد. بعد الموافقة، سيظهر رمز الـ QR مباشرة في تصاريحك.'
+                            : 'Due to unit clinical policies, your visit request will be submitted to the reception desk for authorization before the QR pass is activated.'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold">{lang === 'ar' ? 'قبول فوري ومباشر:' : 'Instant Auto-Approval:'}</div>
+                        <p className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
+                          {lang === 'ar'
+                            ? 'الجناح الطبي متاح حالياً للزيارة وسعة السرير شاغرة. سيتم توليد رمز الـ QR وتفعيله فورياً بمجرد تأكيد الطلب.'
+                            : 'This ward is currently open and bedside capacity is available. A digital QR pass will be issued immediately.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 1. Relationship Clarification Selector (Mandatory Requirement) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-emerald-600" />
+                        <span>{lang === 'ar' ? 'صلة القرابة بالمريض (إلزامي للتحقق الأمني والطبي):' : 'Relationship to Patient (Mandatory):'}</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-600 font-semibold">{lang === 'ar' ? 'مطلوب للموافقة' : 'Required for approval'}</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { id: 'FIRST_DEGREE', labelAr: 'درجة أولى (والد/والدة/ابن/زوج)', labelEn: '1st Degree (Parent/Child/Spouse)' },
+                        { id: 'SECOND_DEGREE', labelAr: 'درجة ثانية (أخ/أخت/جد/حفيد)', labelEn: '2nd Degree (Sibling/Grandparent)' },
+                        { id: 'EXTENDED_FAMILY', labelAr: 'أقارب وعائلة', labelEn: 'Extended Family' },
+                        { id: 'FRIEND', labelAr: 'صديق / معارف', labelEn: 'Friend / Acquaintance' },
+                        { id: 'COMPANION', labelAr: 'مرافق رسمي للمريض', labelEn: 'Official Caregiver / Companion' },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setRelationship(item.id)}
+                          className={`py-2.5 px-3 rounded-xl border text-xs font-bold text-center transition-all ${
+                            relationship === item.id
+                              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {lang === 'ar' ? item.labelAr : item.labelEn}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Visitor Type */}
                     <div>
@@ -465,19 +624,6 @@ export const VisitorPortalPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Summary Notice */}
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
-                    <div className="flex items-center gap-2 font-bold text-slate-800">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{lang === 'ar' ? 'إشعار الدخول عبر البوابات الذكية:' : 'Smart Gate Turnstile Policy:'}</span>
-                    </div>
-                    <p className="text-[11px] leading-relaxed">
-                      {lang === 'ar'
-                        ? 'سيتم توليد رمز QR مشفر لمرة واحدة. يجب مسحه عند البوابة الخارجية (CP-01) وبوابة الجناح المخصص قبل انتهاء المدة المحددة.'
-                        : 'A single-use cryptographic QR code will be issued. Scan it at the Main Entrance Turnstile (CP-01) and designated Ward Gate.'}
-                    </p>
-                  </div>
-
                   {/* Submit Button */}
                   <div className="flex justify-end gap-3 pt-2">
                     <button
@@ -490,14 +636,23 @@ export const VisitorPortalPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={bookPassMutation.isPending}
-                      className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center gap-2"
+                      className={`px-6 py-2.5 rounded-xl text-white font-bold text-xs shadow-md flex items-center gap-2 ${
+                        selectedPatient.visitation_category === 'LIMITED'
+                          ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30'
+                          : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
+                      }`}
                     >
                       {bookPassMutation.isPending ? (
                         <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : selectedPatient.visitation_category === 'LIMITED' ? (
+                        <>
+                          <Hourglass className="w-4 h-4" />
+                          <span>{lang === 'ar' ? 'إرسال الطلب لاعتماد الاستقبال' : 'Submit for Reception Approval'}</span>
+                        </>
                       ) : (
                         <>
                           <QrCode className="w-4 h-4" />
-                          <span>{lang === 'ar' ? 'توليد رمز وتصريح الزيارة الآن' : 'Generate Digital QR Pass'}</span>
+                          <span>{lang === 'ar' ? 'توليد وتفعيل التصريح فورياً' : 'Generate & Activate Pass'}</span>
                         </>
                       )}
                     </button>
@@ -517,12 +672,12 @@ export const VisitorPortalPage: React.FC = () => {
               <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 text-slate-500 space-y-3 max-w-md mx-auto">
                 <QrCode className="w-12 h-12 text-slate-300 mx-auto" />
                 <h3 className="font-bold text-slate-800 text-base">
-                  {lang === 'ar' ? 'لا يوجد لديك تصاريح زيارة نشطة حالياً' : 'No Active Visit Passes'}
+                  {lang === 'ar' ? 'لا يوجد لديك تصاريح زيارة مسجلة' : 'No Visit Passes Found'}
                 </h3>
                 <p className="text-xs text-slate-500">
                   {lang === 'ar'
-                    ? 'يمكنك البحث عن المريض وتوليد تصريح فوري بالضغط على زر البحث'
-                    : 'Search for an admitted patient to issue a digital scannable QR pass.'}
+                    ? 'يمكنك البحث عن المريض بالاسم أو رقم الملف وإرسال طلب زيارة'
+                    : 'Search for an admitted patient by MRN or name to submit a visit request.'}
                 </p>
                 <button
                   onClick={() => setActiveTab('SEARCH')}
@@ -535,138 +690,257 @@ export const VisitorPortalPage: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* Left Side: Pass Selector Cards */}
                 <div className="lg:col-span-4 space-y-3 no-print">
-                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    {lang === 'ar' ? 'سجل التصاريح الخاصة بك' : 'Your Visit Passes'}
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      {lang === 'ar' ? 'سجل طلبات وتصاريح الزيارة' : 'Visit Requests & Passes'}
+                    </h3>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {lang === 'ar' ? 'تحديث تلقائي' : 'Live Polling'}
+                    </span>
+                  </div>
 
-                  {myPasses.map((p) => (
-                    <div
-                      key={p.visit_id}
-                      onClick={() => setActivePass(p)}
-                      className={`bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all ${
-                        activePass?.visit_id === p.visit_id
-                          ? 'border-emerald-600 bg-emerald-50/40 shadow-md'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="font-mono text-xs font-bold text-emerald-800">{p.pass_code}</div>
-                          <div className="font-bold text-slate-900 text-sm mt-0.5">{p.patient_name}</div>
-                          <div className="text-[11px] text-slate-500">{p.ward_name} &bull; Room {p.room_number}</div>
+                  {myPasses.map((p) => {
+                    const isPending = p.status === 'PENDING' || p.approval_status === 'PENDING_APPROVAL';
+                    const isRejected = p.status === 'REJECTED' || p.approval_status === 'REJECTED';
+                    const isActive = p.status === 'ACTIVE' || p.status === 'REGISTERED';
+
+                    return (
+                      <div
+                        key={p.visit_id}
+                        onClick={() => setActivePass(p)}
+                        className={`bg-white rounded-2xl p-4 border-2 cursor-pointer transition-all ${
+                          activePass?.visit_id === p.visit_id
+                            ? isPending
+                              ? 'border-amber-500 bg-amber-50/40 shadow-md'
+                              : 'border-emerald-600 bg-emerald-50/40 shadow-md'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-mono text-xs font-bold text-emerald-800">{p.pass_code || p.visit_number}</div>
+                            <div className="font-bold text-slate-900 text-sm mt-0.5 flex items-center gap-1.5">
+                              <Lock className="w-3 h-3 text-slate-400" />
+                              <span>{p.patient_name}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-500">{getLocalizedWard(p.ward_name, lang)} &bull; {p.room_number}</div>
+                            {p.relationship && (
+                              <div className="text-[10px] text-slate-600 mt-1">
+                                {lang === 'ar' ? `الصلة: ${p.relationship}` : `Relation: ${p.relationship}`}
+                              </div>
+                            )}
+                          </div>
+
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                              isPending
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                : isRejected
+                                ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                : isActive
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {isPending ? (
+                              <>
+                                <Hourglass className="w-2.5 h-2.5 animate-spin" />
+                                <span>{lang === 'ar' ? 'قيد المراجعة' : 'Pending'}</span>
+                              </>
+                            ) : isRejected ? (
+                              <>
+                                <XCircle className="w-2.5 h-2.5" />
+                                <span>{lang === 'ar' ? 'مرفوض' : 'Rejected'}</span>
+                              </>
+                            ) : (
+                              <span>{p.status}</span>
+                            )}
+                          </span>
                         </div>
-
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            p.status === 'ACTIVE'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {p.status}
-                        </span>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
-                {/* Right Side: The Official Scannable Digital QR Badge */}
+                {/* Right Side: Pass Details or Digital QR Badge */}
                 {activePass && (
                   <div className="lg:col-span-8 flex flex-col items-center">
-                    {/* Action Bar */}
-                    <div className="w-full max-w-sm flex items-center justify-between mb-3 no-print">
-                      <span className="text-xs font-bold text-slate-700">
-                        {lang === 'ar' ? 'البطاقة الرقمية الرسمية' : 'Digital Scannable Badge'}
-                      </span>
-                      <button
-                        onClick={handlePrint}
-                        className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                        <span>{lang === 'ar' ? 'طباعة التصريح' : 'Print Badge'}</span>
-                      </button>
-                    </div>
+                    {/* CASE 1: PENDING RECEPTION APPROVAL */}
+                    {activePass.status === 'PENDING' || activePass.approval_status === 'PENDING_APPROVAL' ? (
+                      <div className="bg-white rounded-3xl border-2 border-amber-400 p-6 sm:p-8 shadow-xl text-slate-900 max-w-md w-full space-y-5 animate-in fade-in">
+                        <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 mx-auto flex items-center justify-center border border-amber-200">
+                          <Hourglass className="w-8 h-8 animate-pulse text-amber-600" />
+                        </div>
 
-                    {/* The Visual Badge Container */}
-                    <div
-                      id="printable-visitor-pass"
-                      className="bg-white rounded-3xl border-2 border-slate-900 p-6 sm:p-7 shadow-2xl text-slate-900 max-w-sm w-full space-y-4 print-page relative overflow-hidden"
-                    >
-                      {/* Anti-Screenshot Dynamic Security Ribbon */}
-                      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white text-[10px] font-mono py-1 px-3 -mx-6 sm:-mx-7 -mt-6 sm:-mt-7 mb-4 flex items-center justify-between font-bold shadow-sm">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
-                          <span>LIVE PASS</span>
-                        </span>
-                        <span>{currentTime.toLocaleTimeString()}</span>
-                      </div>
-
-                      {/* Hospital Header Banner */}
-                      <div className="text-center border-b-2 border-slate-900 pb-3">
-                        <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-                          {lang === 'ar' ? 'سلطنة عمان — وزارة الصحة' : 'SULTANATE OF OMAN — MINISTRY OF HEALTH'}
-                        </div>
-                        <div className="text-base font-black text-slate-900 tracking-tight mt-0.5">
-                          {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
-                        </div>
-                        <div className="inline-block mt-1 px-3 py-0.5 rounded-full bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider">
-                          {lang === 'ar' ? 'تصريح زيارة رقمي ذكي' : 'Smart Digital Visitor Pass'}
-                        </div>
-                      </div>
-
-                      {/* Scannable Real QR Image */}
-                      <div className="flex flex-col items-center justify-center p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-200">
-                        {activePass.qr_image_base64 && (
-                          <img
-                            src={activePass.qr_image_base64}
-                            alt="Scannable QR Pass"
-                            className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
-                          />
-                        )}
-                        <span className="font-mono text-xs font-black tracking-wider text-slate-900 mt-2 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
-                          {activePass.pass_code}
-                        </span>
-                      </div>
-
-                      {/* Visually Displayed Token Details */}
-                      <div className="space-y-2 text-xs divide-y divide-slate-100">
-                        <div className="flex justify-between pt-1">
-                          <span className="text-slate-500 font-medium">{lang === 'ar' ? 'اسم الزائر:' : 'Visitor Name:'}</span>
-                          <span className="font-bold text-slate-900 text-right rtl:text-left">{activePass.visitor_name}</span>
-                        </div>
-                        <div className="flex justify-between pt-1">
-                          <span className="text-slate-500 font-medium">{lang === 'ar' ? 'الرقم المدني:' : 'Civil ID:'}</span>
-                          <span className="font-mono font-semibold text-slate-800">{activePass.visitor_civil_id}</span>
-                        </div>
-                        <div className="flex justify-between pt-1">
-                          <span className="text-slate-500 font-medium">{lang === 'ar' ? 'اسم المريض:' : 'Patient Name:'}</span>
-                          <span className="font-bold text-emerald-800">{activePass.patient_name}</span>
-                        </div>
-                        <div className="flex justify-between pt-1">
-                          <span className="text-slate-500 font-medium">{lang === 'ar' ? 'الموقع والمبنى:' : 'Destination:'}</span>
-                          <span className="font-semibold text-slate-800">
-                            {activePass.ward_name} &bull; Room {activePass.room_number} ({activePass.bed})
+                        <div className="text-center space-y-1">
+                          <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-900 uppercase tracking-wider inline-block">
+                            {lang === 'ar' ? 'طلب زيارة قيد مراجعة واعتماد الاستقبال' : 'Visit Request Under Review'}
                           </span>
+                          <h3 className="text-lg font-black text-slate-900 mt-2">
+                            {lang === 'ar' ? 'في انتظار موافقة موظف الاستقبال أو التمريض' : 'Awaiting Reception / Ward Approval'}
+                          </h3>
+                          <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
+                            {lang === 'ar'
+                              ? 'تم استلام طلبك وهو معروض حالياً على شاشة الاستقبال للتأكيد والموافقة. سيتحول هذا الكرت إلى رمز QR فورياً بمجرد الاعتماد.'
+                              : 'Your visit request is in the reception approval queue. Once accepted, this card will automatically activate with a scannable QR pass.'}
+                          </p>
                         </div>
-                        <div className="flex justify-between pt-1">
-                          <span className="text-slate-500 font-medium">{lang === 'ar' ? 'تاريخ وساعات الزيارة:' : 'Valid Window:'}</span>
-                          <span className="font-bold text-slate-900">
-                            {new Date(activePass.valid_from).toLocaleDateString()} ({activePass.max_duration_minutes} min)
-                          </span>
-                        </div>
-                        <div className="flex justify-between pt-1">
-                          <span className="text-slate-500 font-medium">{lang === 'ar' ? 'حالة التصريح:' : 'Pass Status:'}</span>
-                          <span className="font-bold text-emerald-700">🟢 {activePass.status}</span>
-                        </div>
-                      </div>
 
-                      {/* Instructions Footnote */}
-                      <div className="border-t-2 border-slate-900 pt-2 text-[10px] text-center text-slate-500 leading-tight">
-                        {lang === 'ar'
-                          ? 'يرجى إبراز هذا الرمز عند بوابات الدخول الذكية. التصريح مخصص للاستخدام الفردي فقط.'
-                          : 'Please present this digital code at smart optical turnstiles. Single-person entry only.'}
+                        {/* Request Summary Box */}
+                        <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-2 text-xs">
+                          <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                            <span className="text-amber-900 font-medium">{lang === 'ar' ? 'رقم الطلب:' : 'Request No:'}</span>
+                            <span className="font-mono font-bold text-amber-900">{activePass.visit_number}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                            <span className="text-amber-900 font-medium">{lang === 'ar' ? 'المريض (محمي بالخصوصية):' : 'Patient (Masked):'}</span>
+                            <span className="font-bold text-amber-950 flex items-center gap-1">
+                              <Lock className="w-3 h-3 text-amber-700" />
+                              <span>{activePass.patient_name}</span>
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                            <span className="text-amber-900 font-medium">{lang === 'ar' ? 'صلة القرابة:' : 'Relationship:'}</span>
+                            <span className="font-bold text-amber-900">{activePass.relationship || 'First Degree'}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-amber-900 font-medium">{lang === 'ar' ? 'الموقع المطلوب:' : 'Destination:'}</span>
+                            <span className="font-semibold text-amber-950">
+                              {getLocalizedWard(activePass.ward_name, lang)} &bull; {activePass.room_number}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-center text-[11px] text-amber-700 flex items-center justify-center gap-2 font-medium">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                          <span>{lang === 'ar' ? 'جاري الفحص التلقائي لاعتماد الطلب كل 4 ثوانٍ...' : 'Auto-checking approval status every 4s...'}</span>
+                        </div>
                       </div>
-                    </div>
+                    ) : activePass.status === 'REJECTED' || activePass.approval_status === 'REJECTED' ? (
+                      /* CASE 2: REJECTED */
+                      <div className="bg-white rounded-3xl border-2 border-rose-300 p-6 sm:p-8 shadow-xl text-slate-900 max-w-md w-full space-y-4 text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-700 mx-auto flex items-center justify-center">
+                          <XCircle className="w-8 h-8 text-rose-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">
+                          {lang === 'ar' ? 'تم رفض طلب الزيارة' : 'Visit Request Denied'}
+                        </h3>
+                        <p className="text-xs text-rose-700 bg-rose-50 p-3 rounded-xl border border-rose-200">
+                          {activePass.rejection_reason || (lang === 'ar' ? 'بناءً على تعليمات الطبيب أو استيعاب الجناح' : 'Per ward capacity or medical directive')}
+                        </p>
+                        <button
+                          onClick={() => setActiveTab('SEARCH')}
+                          className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold"
+                        >
+                          {lang === 'ar' ? 'تقديم طلب جديد' : 'Submit New Request'}
+                        </button>
+                      </div>
+                    ) : (
+                      /* CASE 3: ACTIVE SCANNABLE DIGITAL QR BADGE */
+                      <div className="flex flex-col items-center w-full">
+                        {/* Action Bar */}
+                        <div className="w-full max-w-sm flex items-center justify-between mb-3 no-print">
+                          <span className="text-xs font-bold text-slate-700">
+                            {lang === 'ar' ? 'البطاقة الرقمية الرسمية' : 'Digital Scannable Badge'}
+                          </span>
+                          <button
+                            onClick={handlePrint}
+                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>{lang === 'ar' ? 'طباعة التصريح' : 'Print Badge'}</span>
+                          </button>
+                        </div>
+
+                        {/* The Visual Badge Container */}
+                        <div
+                          id="printable-visitor-pass"
+                          className="bg-white rounded-3xl border-2 border-slate-900 p-6 sm:p-7 shadow-2xl text-slate-900 max-w-sm w-full space-y-4 print-page relative overflow-hidden"
+                        >
+                          {/* Anti-Screenshot Dynamic Security Ribbon */}
+                          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white text-[10px] font-mono py-1 px-3 -mx-6 sm:-mx-7 -mt-6 sm:-mt-7 mb-4 flex items-center justify-between font-bold shadow-sm">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
+                              <span>LIVE APPROVED PASS</span>
+                            </span>
+                            <span>{currentTime.toLocaleTimeString()}</span>
+                          </div>
+
+                          {/* Hospital Header Banner */}
+                          <div className="text-center border-b-2 border-slate-900 pb-3">
+                            <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
+                              {lang === 'ar' ? 'سلطنة عمان — وزارة الصحة' : 'SULTANATE OF OMAN — MINISTRY OF HEALTH'}
+                            </div>
+                            <div className="text-base font-black text-slate-900 tracking-tight mt-0.5">
+                              {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
+                            </div>
+                            <div className="inline-block mt-1 px-3 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-wider">
+                              {lang === 'ar' ? 'تصريح زيارة رقمي معتمد ومفعل' : 'Approved Digital Visitor Pass'}
+                            </div>
+                          </div>
+
+                          {/* Scannable Real QR Image */}
+                          <div className="flex flex-col items-center justify-center p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-200">
+                            {activePass.qr_image_base64 && (
+                              <img
+                                src={activePass.qr_image_base64}
+                                alt="Scannable QR Pass"
+                                className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
+                              />
+                            )}
+                            <span className="font-mono text-xs font-black tracking-wider text-slate-900 mt-2 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
+                              {activePass.pass_code}
+                            </span>
+                          </div>
+
+                          {/* Visually Displayed Token Details */}
+                          <div className="space-y-2 text-xs divide-y divide-slate-100">
+                            <div className="flex justify-between pt-1">
+                              <span className="text-slate-500 font-medium">{lang === 'ar' ? 'اسم الزائر:' : 'Visitor Name:'}</span>
+                              <span className="font-bold text-slate-900 text-right rtl:text-left">{activePass.visitor_name}</span>
+                            </div>
+                            <div className="flex justify-between pt-1">
+                              <span className="text-slate-500 font-medium">{lang === 'ar' ? 'الرقم المدني:' : 'Civil ID:'}</span>
+                              <span className="font-mono font-semibold text-slate-800">{activePass.visitor_civil_id}</span>
+                            </div>
+                            <div className="flex justify-between pt-1">
+                              <span className="text-slate-500 font-medium">{lang === 'ar' ? 'صلة القرابة:' : 'Relationship:'}</span>
+                              <span className="font-bold text-emerald-800">{activePass.relationship || 'First Degree'}</span>
+                            </div>
+                            <div className="flex justify-between pt-1">
+                              <span className="text-slate-500 font-medium">{lang === 'ar' ? 'المريض (MRN):' : 'Patient (MRN):'}</span>
+                              <span className="font-bold text-slate-900 flex items-center gap-1">
+                                <Lock className="w-3 h-3 text-slate-400" />
+                                <span>{activePass.patient_name}</span>
+                              </span>
+                            </div>
+                            <div className="flex justify-between pt-1">
+                              <span className="text-slate-500 font-medium">{lang === 'ar' ? 'الموقع والمبنى:' : 'Destination:'}</span>
+                              <span className="font-semibold text-slate-800">
+                                {getLocalizedWard(activePass.ward_name, lang)} &bull; Room {activePass.room_number} ({activePass.bed})
+                              </span>
+                            </div>
+                            <div className="flex justify-between pt-1">
+                              <span className="text-slate-500 font-medium">{lang === 'ar' ? 'الصلاحية والمدة:' : 'Valid Window:'}</span>
+                              <span className="font-bold text-slate-900">
+                                {new Date(activePass.valid_from).toLocaleDateString()} ({activePass.max_duration_minutes} min)
+                              </span>
+                            </div>
+                            <div className="flex justify-between pt-1">
+                              <span className="text-slate-500 font-medium">{lang === 'ar' ? 'حالة الاعتماد:' : 'Approval Status:'}</span>
+                              <span className="font-bold text-emerald-700">🟢 {lang === 'ar' ? 'معتمد ونشط' : 'Approved & Active'}</span>
+                            </div>
+                          </div>
+
+                          {/* Instructions Footnote */}
+                          <div className="border-t-2 border-slate-900 pt-2 text-[10px] text-center text-slate-500 leading-tight">
+                            {lang === 'ar'
+                              ? 'يرجى إبراز هذا الرمز عند بوابات الدخول الذكية. التصريح مخصص للاستخدام الفردي فقط.'
+                              : 'Please present this digital code at smart optical turnstiles. Single-person entry only.'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

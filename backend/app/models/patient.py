@@ -18,6 +18,7 @@ class Patient(Base):
     admission_date = Column(DateTime, default=datetime.utcnow)
     max_concurrent_visitors = Column(Integer, default=2)
     max_daily_visitors = Column(Integer, default=6)
+    visitation_category = Column(String(20), default="ALLOWED")  # ALLOWED, LIMITED, PROHIBITED
 
     ward = relationship("Ward", back_populates="patients")
     room = relationship("Room", back_populates="patients")

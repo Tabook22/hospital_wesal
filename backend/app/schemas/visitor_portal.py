@@ -13,7 +13,10 @@ class VisitorPatientSearchItem(BaseModel):
     id: int
     hospital_number: str
     full_name: str
+    masked_name: str
     arabic_name: Optional[str] = None
+    masked_arabic_name: Optional[str] = None
+    visitation_category: str = "ALLOWED"  # ALLOWED, LIMITED, PROHIBITED
     ward_name: str
     room_number: str
     bed: str
@@ -26,6 +29,8 @@ class VisitorPatientSearchItem(BaseModel):
 class VisitorPassBookRequest(BaseModel):
     patient_id: int
     visitor_type: str = "VISITOR"  # VISITOR or COMPANION
+    relationship: str = "FIRST_DEGREE"  # FIRST_DEGREE, SECOND_DEGREE, EXTENDED_FAMILY, FRIEND, COMPANION
+    relationship_details: Optional[str] = None
     duration_minutes: int = 20
     notes: Optional[str] = None
 
@@ -40,6 +45,7 @@ class VisitorPassDetail(BaseModel):
     visitor_civil_id: str
     visitor_mobile: str
     visitor_type: str
+    relationship: Optional[str] = None
     patient_name: str
     patient_hospital_number: str
     ward_name: str
@@ -48,5 +54,8 @@ class VisitorPassDetail(BaseModel):
     valid_from: datetime
     valid_until: datetime
     max_duration_minutes: int
-    status: str
+    status: str  # PENDING_APPROVAL, REGISTERED, ACTIVE, etc.
+    approval_status: str = "APPROVED"  # APPROVED, PENDING_APPROVAL, REJECTED
+    rejection_reason: Optional[str] = None
     generated_at: datetime
+

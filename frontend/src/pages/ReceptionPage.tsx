@@ -1,20 +1,25 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import {
   UserPlus, Search, UserCheck, Shield, CheckCircle2,
   AlertCircle, Clock, QrCode, Printer, ArrowRight, ArrowLeft,
   Sparkles, Building2, Phone, IdCard, Info, HeartHandshake,
-  BookOpen, BedDouble
+  BookOpen, BedDouble, Hourglass, Check, XCircle, RefreshCw,
+  FileCheck
 } from 'lucide-react';
-import { Patient, Visit } from '../types';
+import { Patient, Visit, PendingVisitRequest } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { AdminWorkflowGuide } from '../components/common/AdminWorkflowGuide';
 
 export const ReceptionPage: React.FC = () => {
   const { t, lang, isRtl } = useLanguage();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Tab mode: On-site Walk-in Registration vs Pending Visitor Self-Service Approvals
+  const [activeTab, setActiveTab] = useState<'REGISTRATION' | 'APPROVALS'>('REGISTRATION');
 
   // Wizard Step: 1 = Patient, 2 = Visitor Info, 3 = Visit Permission, 4 = Confirmation / Pass Generated
   const [step, setStep] = useState<number>(1);
@@ -33,7 +38,46 @@ export const ReceptionPage: React.FC = () => {
   const [durationMinutes, setDurationMinutes] = useState<number>(2); // Default to 2 min for interactive demo
   const [generatedVisit, setGeneratedVisit] = useState<Visit | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+
+  // Fetch Pending Visitor Self-Service Requests for Reception Approval
+  const {
+    data: pendingRequests = [],
+    isLoading: isLoadingPending,
+    refetch: refetchPending
+  } = useQuery<PendingVisitRequest[]>({
+    queryKey: ['pending-visit-requests'],
+    queryFn: () => api.getPendingVisitRequests(),
+    refetchInterval: 5000,
+  });
+
+  // Approve Visit Request Mutation
+  const approveMutation = useMutation({
+    mutationFn: (visitId: number) => api.approveVisitRequest(visitId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-visit-requests'] });
+      setSuccessMessage(lang === 'ar' ? 'تم اعتماد وتفعيل تصريح الزيارة بنجاح' : 'Visit request approved and pass activated successfully');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    },
+    onError: (err: any) => {
+      setErrorMessage(err.message || 'Failed to approve request');
+    },
+  });
+
+  // Reject Visit Request Mutation
+  const rejectMutation = useMutation({
+    mutationFn: ({ visitId, reason }: { visitId: number; reason?: string }) =>
+      api.rejectVisitRequest(visitId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-visit-requests'] });
+      setSuccessMessage(lang === 'ar' ? 'تم رفض طلب الزيارة وإشعار الزائر' : 'Visit request rejected');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    },
+    onError: (err: any) => {
+      setErrorMessage(err.message || 'Failed to reject request');
+    },
+  });
 
   // Fetch Patients
   const { data: patients = [] } = useQuery({
@@ -138,67 +182,249 @@ export const ReceptionPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Stepper Progress */}
-        <div className="mt-6">
-          <div className="flex items-center justify-between">
-            {[
-              { num: 1, label: t('rec.step1') },
-              { num: 2, label: t('rec.step2') },
-              { num: 3, label: t('rec.step3') },
-              { num: 4, label: t('rec.step4') },
-            ].map((st) => (
-              <div key={st.num} className="flex-1 flex items-center">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0 ${
-                      step > st.num
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : step === st.num
-                        ? 'bg-hospital-600 text-white shadow-md ring-4 ring-hospital-100'
-                        : 'bg-slate-200 text-slate-500'
-                    }`}
-                  >
-                    {step > st.num ? <CheckCircle2 className="w-4 h-4" /> : st.num}
-                  </div>
-                  <span
-                    className={`text-xs font-bold hidden md:inline truncate ${
-                      step >= st.num ? 'text-slate-900' : 'text-slate-400'
-                    }`}
-                  >
-                    {st.label}
-                  </span>
-                </div>
-                {st.num < 4 && (
-                  <div
-                    className={`flex-1 h-0.5 mx-1.5 sm:mx-3 transition-colors ${
-                      step > st.num ? 'bg-emerald-500' : 'bg-slate-200'
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-          {/* Active Step Indicator for Mobile */}
-          <div className="md:hidden mt-2.5 text-center">
-            <span className="text-xs font-bold text-hospital-700 bg-hospital-50 px-3 py-1 rounded-full border border-hospital-200">
-              {step === 1 ? t('rec.step1') :
-               step === 2 ? t('rec.step2') :
-               step === 3 ? t('rec.step3') : t('rec.step4')}
-            </span>
-          </div>
+        {/* View Selection Tabs */}
+        <div className="flex bg-slate-100 p-1.5 rounded-2xl max-w-lg mt-4 text-xs font-bold border border-slate-200">
+          <button
+            onClick={() => setActiveTab('REGISTRATION')}
+            className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all ${
+              activeTab === 'REGISTRATION'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <UserPlus className="w-4 h-4 text-hospital-600" />
+            <span>{lang === 'ar' ? 'تسجيل زائر بالكاونتر' : 'On-Site Registration'}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('APPROVALS')}
+            className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all relative ${
+              activeTab === 'APPROVALS'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FileCheck className="w-4 h-4 text-amber-600" />
+            <span>{lang === 'ar' ? 'طلبات الاعتماد الذاتي' : 'Pending Approvals'}</span>
+            {pendingRequests.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-pulse">
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Stepper Progress (Only visible in Walk-in Registration mode) */}
+        {activeTab === 'REGISTRATION' && (
+          <div className="mt-6">
+            <div className="flex items-center justify-between">
+              {[
+                { num: 1, label: t('rec.step1') },
+                { num: 2, label: t('rec.step2') },
+                { num: 3, label: t('rec.step3') },
+                { num: 4, label: t('rec.step4') },
+              ].map((st) => (
+                <div key={st.num} className="flex-1 flex items-center">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0 ${
+                        step > st.num
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : step === st.num
+                          ? 'bg-hospital-600 text-white shadow-md ring-4 ring-hospital-100'
+                          : 'bg-slate-200 text-slate-500'
+                      }`}
+                    >
+                      {step > st.num ? <CheckCircle2 className="w-4 h-4" /> : st.num}
+                    </div>
+                    <span
+                      className={`text-xs font-bold hidden md:inline truncate ${
+                        step >= st.num ? 'text-slate-900' : 'text-slate-400'
+                      }`}
+                    >
+                      {st.label}
+                    </span>
+                  </div>
+                  {st.num < 4 && (
+                    <div
+                      className={`flex-1 h-0.5 mx-1.5 sm:mx-3 transition-colors ${
+                        step > st.num ? 'bg-emerald-500' : 'bg-slate-200'
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Active Step Indicator for Mobile */}
+            <div className="md:hidden mt-2.5 text-center">
+              <span className="text-xs font-bold text-hospital-700 bg-hospital-50 px-3 py-1 rounded-full border border-hospital-200">
+                {step === 1 ? t('rec.step1') :
+                 step === 2 ? t('rec.step2') :
+                 step === 3 ? t('rec.step3') : t('rec.step4')}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Global Success Banner */}
+      {successMessage && (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-sm animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <span>{successMessage}</span>
+        </div>
+      )}
 
       {/* Global Error Banner */}
       {errorMessage && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* STEP 1: Find Patient */}
-      {step === 1 && (
+      {/* ==================================================================== */}
+      {/* VIEW: PENDING VISITOR APPROVAL QUEUE */}
+      {/* ==================================================================== */}
+      {activeTab === 'APPROVALS' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black text-slate-900">
+                {lang === 'ar' ? 'طلبات تصاريح الزيارة الذاتية قيد الاعتماد' : 'Pending Visitor Self-Service Approvals'}
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {lang === 'ar'
+                  ? 'مراجعة وتأكيد طلبات الزوار للوحدات المشروطة والتحقق من صلة القرابة قبل تفعيل الرمز'
+                  : 'Review visitor relationship and bedside safety before issuing turnstile QR tokens.'}
+              </p>
+            </div>
+
+            <button
+              onClick={() => refetchPending()}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>{lang === 'ar' ? 'تحديث' : 'Refresh'}</span>
+            </button>
+          </div>
+
+          {isLoadingPending ? (
+            <div className="py-12 text-center text-slate-400">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-hospital-600" />
+              <span className="text-xs">{lang === 'ar' ? 'جاري تحميل الطلبات المعلقة...' : 'Loading pending requests...'}</span>
+            </div>
+          ) : pendingRequests.length === 0 ? (
+            <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 text-slate-500 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                {lang === 'ar' ? 'لا توجد طلبات زيارة معلقة حالياً' : 'No Pending Requests'}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                {lang === 'ar'
+                  ? 'جميع طلبات الزوار الذاتية معتمدة أو تم معالجتها بالكامل. يتم التحديث تلقائياً عند ورود طلب جديد.'
+                  : 'All visitor self-service requests have been processed. New requests will appear here automatically.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingRequests.map((req) => (
+                <div
+                  key={req.visit_id}
+                  className="bg-white rounded-2xl border-2 border-amber-200 p-5 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                  <div className="space-y-2 flex-1">
+                    {/* Header: Request ID & Time */}
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-mono font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        {req.visit_number}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(req.registered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        {lang === 'ar' ? 'بانتظار الاعتماد' : 'Pending Approval'}
+                      </span>
+                    </div>
+
+                    {/* Visitor & Patient Info Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          {lang === 'ar' ? 'بيانات الزائر المقدم للطلب:' : 'Visitor Information:'}
+                        </div>
+                        <div className="font-bold text-slate-900 text-sm">{req.visitor_name}</div>
+                        <div className="text-slate-600 font-mono text-[11px]">
+                          {req.visitor_civil_id} &bull; {req.visitor_mobile}
+                        </div>
+                        <div className="pt-1">
+                          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-800 border border-indigo-100">
+                            {lang === 'ar' ? `صلة القرابة: ${req.visitor_relationship || 'درجة أولى'}` : `Relation: ${req.visitor_relationship || 'First Degree'}`}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          {lang === 'ar' ? 'المريض المطلوب زيارته:' : 'Patient Destination:'}
+                        </div>
+                        <div className="font-bold text-slate-900 text-sm">{req.patient_name}</div>
+                        <div className="text-slate-600 text-[11px]">
+                          MRN: <span className="font-mono font-bold text-emerald-800">{req.patient_hospital_number}</span>
+                        </div>
+                        <div className="text-slate-700 font-semibold text-[11px]">
+                          {req.ward_name} &bull; {req.room_number}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 1-Click Action Buttons */}
+                  <div className="flex md:flex-col gap-2 shrink-0 justify-end">
+                    <button
+                      onClick={() => approveMutation.mutate(req.visit_id)}
+                      disabled={approveMutation.isPending}
+                      className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      {approveMutation.isPending ? (
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>{lang === 'ar' ? 'اعتماد وتفعيل الرمز' : 'Approve & Activate'}</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const reason = window.prompt(
+                          lang === 'ar'
+                            ? 'أدخل سبب رفض الزيارة (اختياري):'
+                            : 'Enter rejection reason (optional):',
+                          lang === 'ar' ? 'تعليمات الطبيب المعالج أو اكتمال سعة الجناح' : 'Per physician directive or ward capacity'
+                        );
+                        if (reason !== null) {
+                          rejectMutation.mutate({ visitId: req.visit_id, reason });
+                        }
+                      }}
+                      disabled={rejectMutation.isPending}
+                      className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 flex items-center justify-center gap-1 transition-all"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>{lang === 'ar' ? 'رفض الطلب' : 'Reject'}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* STEP 1: Find Patient (Only in Registration Mode) */}
+      {activeTab === 'REGISTRATION' && step === 1 && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
           <div>
             <h2 className="text-base font-bold text-slate-900">{t('rec.search_patient_title')}</h2>

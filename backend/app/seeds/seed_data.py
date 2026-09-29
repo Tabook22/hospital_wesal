@@ -52,6 +52,17 @@ def seed_database():
             db.commit()
             print("Added demo visitor user to existing database.")
             
+        # Ensure visitation categories are set on patients
+        patients_list = db.query(Patient).all()
+        for p in patients_list:
+            if p.hospital_number in ["P00051", "P00052", "P00053"]:
+                p.visitation_category = "PROHIBITED"
+            elif p.hospital_number in ["P00021", "P00024", "P00041", "P00042", "P00061"]:
+                p.visitation_category = "LIMITED"
+            else:
+                p.visitation_category = "ALLOWED"
+        db.commit()
+
         print("Database already contains records. Skipping full seed.")
         db.close()
         return

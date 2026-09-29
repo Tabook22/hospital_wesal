@@ -21,6 +21,7 @@ from app.schemas.visitor_portal import (
 from app.services.qr_service import generate_secure_token, generate_pass_code, generate_visit_number, generate_qr_base64
 from app.services.audit_service import log_audit
 from app.api.v1.ws import ws_manager
+from app.api.v1.auth import require_staff_user
 
 router = APIRouter()
 
@@ -38,67 +39,6 @@ def get_current_visitor_user(token: str = Depends(oauth2_scheme), db: Session = 
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     
     return user
-
-@router.post("/auth/register", response_model=Token)
-def register_visitor(reg: VisitorRegisterRequest, db: Session = Depends(get_db)):
-    clean_username = reg.username.lower().strip()
-    
-    # 1. Check if username already exists
-    existing_user = db.query(User).filter(User.username == clean_username).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered. Please choose another username or log in."
-        )
-
-    # 2. Create User record with VISITOR role
-    hashed_pw = get_password_hash(reg.password)
-    new_user = User(
-        username=clean_username,
-        hashed_password=hashed_pw,
-        full_name=reg.full_name.strip(),
-        role="VISITOR",
-        is_active=True
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    # 3. Create or link Visitor profile
-    visitor = db.query(Visitor).filter(Visitor.civil_id == reg.civil_id.strip()).first()
-    if not visitor:
-        visitor = Visitor(
-            full_name=reg.full_name.strip(),
-            civil_id=reg.civil_id.strip(),
-            mobile_number=reg.mobile_number.strip(),
-            visitor_type="VISITOR",
-            created_at=datetime.utcnow()
-        )
-        db.add(visitor)
-        db.commit()
-        db.refresh(visitor)
-
-    # 4. Generate Access Token
-    access_token = create_access_token(subject=new_user.username, role=new_user.role)
-
-    log_audit(
-        db=db,
-        action="VISITOR_REGISTER",
-        user_id=new_user.id,
-        username=new_user.username,
-        entity_type="USER",
-        entity_id=str(new_user.id),
-        details={"full_name": new_user.full_name, "civil_id": reg.civil_id}
-    )
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user_id": new_user.id,
-        "username": new_user.username,
-        "full_name": new_user.full_name,
-        "role": new_user.role
-    }
 
 ARABIC_PATIENT_NAMES = {
     "Ahmed Mohammed Al-Hakim": "أحمد محمد الحكيم",
@@ -142,35 +82,138 @@ ARABIC_QUERY_MAP = {
     "هلال": "Hilal", "الحبسي": "Habsi", "بدر": "Bader", "مسعود": "Masoud", "الفارسي": "Farsi"
 }
 
+def mask_person_name(name: str) -> str:
+    """Mask English name: e.g. Salim Said Al-Shanfari -> S*** S*** Al-Shanfari"""
+    if not name:
+        return "Patient"
+    parts = name.strip().split()
+    masked = []
+    for i, p in enumerate(parts):
+        if len(p) <= 2:
+            masked.append(p)
+        elif i == len(parts) - 1:
+            masked.append(p)  # Keep family/tribe name
+        else:
+            masked.append(f"{p[0]}***")
+    return " ".join(masked)
+
+def mask_arabic_name(name: str) -> str:
+    """Mask Arabic name: e.g. سالم سعيد الشنفري -> سـ*** سـ*** الشنفري"""
+    if not name:
+        return "مريض منوم"
+    parts = name.strip().split()
+    masked = []
+    for i, p in enumerate(parts):
+        if len(p) <= 2:
+            masked.append(p)
+        elif i == len(parts) - 1:
+            masked.append(p)  # Keep tribe name
+        else:
+            masked.append(f"{p[0]}ـ***")
+    return " ".join(masked)
+
+def get_patient_visitation_category(patient: Patient) -> str:
+    """Determines visitation category: ALLOWED, LIMITED, PROHIBITED."""
+    if hasattr(patient, 'visitation_category') and patient.visitation_category:
+        return patient.visitation_category
+    
+    # Fallback by ward type
+    ward_code = patient.ward.code if patient.ward else ""
+    if ward_code in ["ICU"]:
+        return "PROHIBITED"
+    if ward_code in ["PED", "SURG"]:
+        return "LIMITED"
+    return "ALLOWED"
+
+@router.post("/auth/register", response_model=Token)
+def register_visitor(reg: VisitorRegisterRequest, db: Session = Depends(get_db)):
+    clean_username = reg.username.lower().strip()
+    
+    existing_user = db.query(User).filter(User.username == clean_username).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered. Please choose another username or log in."
+        )
+
+    hashed_pw = get_password_hash(reg.password)
+    new_user = User(
+        username=clean_username,
+        hashed_password=hashed_pw,
+        full_name=reg.full_name.strip(),
+        role="VISITOR",
+        is_active=True
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    visitor = db.query(Visitor).filter(Visitor.civil_id == reg.civil_id.strip()).first()
+    if not visitor:
+        visitor = Visitor(
+            full_name=reg.full_name.strip(),
+            civil_id=reg.civil_id.strip(),
+            mobile_number=reg.mobile_number.strip(),
+            visitor_type="VISITOR",
+            created_at=datetime.utcnow()
+        )
+        db.add(visitor)
+        db.commit()
+        db.refresh(visitor)
+
+    access_token = create_access_token(subject=new_user.username, role=new_user.role)
+
+    log_audit(
+        db=db,
+        action="VISITOR_REGISTER",
+        user_id=new_user.id,
+        username=new_user.username,
+        entity_type="USER",
+        entity_id=str(new_user.id),
+        details={"full_name": new_user.full_name, "civil_id": reg.civil_id}
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": new_user.id,
+        "username": new_user.username,
+        "full_name": new_user.full_name,
+        "role": new_user.role
+    }
+
 @router.get("/patients/search", response_model=List[VisitorPatientSearchItem])
 def search_patients_for_visitor(
     q: Optional[str] = Query(None, description="Patient name, MRN, or civil ID"),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Patient).filter(Patient.admission_status == "ADMITTED")
+    # STRICT PRIVACY RULE: If no query provided or query is under 2 chars, DO NOT reveal open hospital inpatients!
+    if not q or len(q.strip()) < 2:
+        return []
 
-    if q and q.strip():
-        raw_q = q.strip()
-        clean_q = f"%{raw_q}%"
-        
-        # Check if Arabic words present in query
-        translated_terms = []
-        for word in raw_q.split():
-            clean_word = word.strip()
-            if clean_word in ARABIC_QUERY_MAP:
-                translated_terms.append(f"%{ARABIC_QUERY_MAP[clean_word]}%")
-        
-        filter_conditions = [
-            Patient.full_name.ilike(clean_q),
-            Patient.hospital_number.ilike(clean_q),
-            Patient.civil_id.ilike(clean_q)
-        ]
-        for term in translated_terms:
-            filter_conditions.append(Patient.full_name.ilike(term))
+    raw_q = q.strip()
+    clean_q = f"%{raw_q}%"
+    
+    # Check if Arabic words present in query
+    translated_terms = []
+    for word in raw_q.split():
+        clean_word = word.strip()
+        if clean_word in ARABIC_QUERY_MAP:
+            translated_terms.append(f"%{ARABIC_QUERY_MAP[clean_word]}%")
+    
+    filter_conditions = [
+        Patient.full_name.ilike(clean_q),
+        Patient.hospital_number.ilike(clean_q),
+        Patient.civil_id.ilike(clean_q)
+    ]
+    for term in translated_terms:
+        filter_conditions.append(Patient.full_name.ilike(term))
 
-        query = query.filter(or_(*filter_conditions))
+    query = db.query(Patient).filter(
+        Patient.admission_status == "ADMITTED"
+    ).filter(or_(*filter_conditions))
 
-    patients = query.limit(25).all()
+    patients = query.limit(20).all()
     policy = db.query(VisitPolicy).first()
     visiting_hours = f"{policy.visiting_start} - {policy.visiting_end}" if policy else "16:00 - 20:00"
 
@@ -181,18 +224,23 @@ def search_patients_for_visitor(
             Visit.status.in_(["ACTIVE", "ENDING_SOON", "OVERDUE"])
         ).count()
         can_admit = concurrent_count < p.max_concurrent_visitors
+        category = get_patient_visitation_category(p)
 
+        ar_name = ARABIC_PATIENT_NAMES.get(p.full_name)
         results.append(
             VisitorPatientSearchItem(
                 id=p.id,
                 hospital_number=p.hospital_number,
                 full_name=p.full_name,
-                arabic_name=ARABIC_PATIENT_NAMES.get(p.full_name),
+                masked_name=mask_person_name(p.full_name),
+                arabic_name=ar_name,
+                masked_arabic_name=mask_arabic_name(ar_name) if ar_name else None,
+                visitation_category=category,
                 ward_name=p.ward.name if p.ward else "General Ward",
                 room_number=p.room.room_number if p.room else "N/A",
                 bed=p.bed or "B1",
                 admission_status=p.admission_status,
-                can_admit_visitor=can_admit,
+                can_admit_visitor=can_admit and category != "PROHIBITED",
                 current_concurrent_visitors=concurrent_count,
                 max_concurrent_visitors=p.max_concurrent_visitors,
                 visiting_hours=visiting_hours
@@ -214,8 +262,15 @@ async def book_visitor_pass(
     if patient.admission_status != "ADMITTED":
         raise HTTPException(status_code=400, detail="Patient has been discharged and cannot receive visitors")
 
-    # 2. Resolve Visitor record for current user
-    # Find matching visitor by full_name or user info
+    # 2. Check Visitation Category
+    category = get_patient_visitation_category(patient)
+    if category == "PROHIBITED":
+        raise HTTPException(
+            status_code=400,
+            detail="الزيارة ممنوعة لهذا المريض بناءً على التوجيهات والبروتوكول الطبي / Visits for this patient are prohibited per medical directives."
+        )
+
+    # 3. Resolve Visitor record for current user
     visitor = db.query(Visitor).filter(Visitor.full_name == current_user.full_name).first()
     if not visitor:
         visitor = Visitor(
@@ -223,18 +278,22 @@ async def book_visitor_pass(
             civil_id=f"OM-{current_user.id:06d}",
             mobile_number="+968 90000000",
             visitor_type=book_req.visitor_type,
+            relationship_to_patient=book_req.relationship,
             notes=book_req.notes,
             created_at=datetime.utcnow()
         )
         db.add(visitor)
         db.commit()
         db.refresh(visitor)
+    else:
+        visitor.relationship_to_patient = book_req.relationship
+        db.commit()
 
-    # 3. Check for existing active pass for this patient
+    # 4. Check for existing active pass for this patient
     existing_active = db.query(Visit).filter(
         Visit.visitor_id == visitor.id,
         Visit.patient_id == patient.id,
-        Visit.status.in_(["REGISTERED", "ACTIVE", "ENDING_SOON", "OVERDUE"])
+        Visit.status.in_(["PENDING_APPROVAL", "REGISTERED", "ACTIVE", "ENDING_SOON", "OVERDUE"])
     ).first()
     if existing_active and existing_active.pass_obj:
         p = existing_active.pass_obj
@@ -249,6 +308,7 @@ async def book_visitor_pass(
             visitor_civil_id=visitor.civil_id,
             visitor_mobile=visitor.mobile_number,
             visitor_type=visitor.visitor_type,
+            relationship=existing_active.visitor_relationship or book_req.relationship,
             patient_name=patient.full_name,
             patient_hospital_number=patient.hospital_number,
             ward_name=patient.ward.name if patient.ward else "General Ward",
@@ -257,11 +317,13 @@ async def book_visitor_pass(
             valid_from=existing_active.valid_from,
             valid_until=existing_active.valid_until,
             max_duration_minutes=existing_active.max_duration_minutes,
-            status=p.status,
+            status=existing_active.status,
+            approval_status="APPROVED" if existing_active.status != "PENDING_APPROVAL" else "PENDING_APPROVAL",
+            rejection_reason=existing_active.rejection_reason,
             generated_at=p.generated_at
         )
 
-    # 4. Check Bedside Concurrent Limit
+    # 5. Check Bedside Concurrent Limit
     concurrent_count = db.query(Visit).filter(
         Visit.patient_id == patient.id,
         Visit.status.in_(["ACTIVE", "ENDING_SOON", "OVERDUE"])
@@ -273,7 +335,17 @@ async def book_visitor_pass(
             detail=f"Patient room is currently at maximum capacity ({concurrent_count}/{patient.max_concurrent_visitors} visitors). Please try again shortly."
         )
 
-    # 5. Create Visit and Pass
+    # 6. Determine Approval Logic (Auto vs Reception Review)
+    # ALLOWED category + First-Degree / Companion -> Auto-Approved
+    # LIMITED category OR non-direct relationship -> PENDING_APPROVAL by Reception
+    is_auto_approved = (
+        category == "ALLOWED" and
+        book_req.relationship in ["FIRST_DEGREE", "SECOND_DEGREE", "COMPANION"]
+    )
+    visit_status = "REGISTERED" if is_auto_approved else "PENDING_APPROVAL"
+    pass_status = "ACTIVE" if is_auto_approved else "PENDING"
+    approval_status = "APPROVED" if is_auto_approved else "PENDING_APPROVAL"
+
     now = datetime.utcnow()
     valid_from = now
     duration = book_req.duration_minutes if book_req.duration_minutes > 0 else 20
@@ -286,7 +358,8 @@ async def book_visitor_pass(
         visitor_id=visitor.id,
         ward_id=patient.ward_id,
         service_type="VISITOR_PORTAL",
-        status="REGISTERED",
+        status=visit_status,
+        visitor_relationship=book_req.relationship,
         registered_at=now,
         valid_from=valid_from,
         valid_until=valid_until,
@@ -307,7 +380,7 @@ async def book_visitor_pass(
         secure_token=secure_token,
         qr_payload=qr_payload,
         qr_image_base64=qr_image_base64,
-        status="ACTIVE",
+        status=pass_status,
         generated_at=now
     )
     db.add(new_pass)
@@ -316,21 +389,28 @@ async def book_visitor_pass(
 
     log_audit(
         db=db,
-        action="VISITOR_PASS_SELF_BOOKED",
+        action="VISITOR_PASS_REQUESTED",
         user_id=current_user.id,
         username=current_user.username,
         entity_type="VISIT",
         entity_id=str(new_visit.id),
-        details={"visit_number": visit_number, "pass_code": pass_code, "patient": patient.full_name}
+        details={
+            "visit_number": visit_number,
+            "pass_code": pass_code,
+            "status": visit_status,
+            "relationship": book_req.relationship,
+            "category": category
+        }
     )
 
     await ws_manager.broadcast({
-        "type": "VISIT_CREATED",
+        "type": "VISIT_REQUEST_SUBMITTED",
         "visit_id": new_visit.id,
         "visit_number": visit_number,
         "visitor_name": visitor.full_name,
-        "patient_name": patient.full_name,
-        "ward_name": patient.ward.name if patient.ward else "Ward"
+        "patient_hospital_number": patient.hospital_number,
+        "ward_name": patient.ward.name if patient.ward else "Ward",
+        "status": visit_status
     })
 
     return VisitorPassDetail(
@@ -344,6 +424,7 @@ async def book_visitor_pass(
         visitor_civil_id=visitor.civil_id,
         visitor_mobile=visitor.mobile_number,
         visitor_type=visitor.visitor_type,
+        relationship=new_visit.visitor_relationship,
         patient_name=patient.full_name,
         patient_hospital_number=patient.hospital_number,
         ward_name=patient.ward.name if patient.ward else "General Ward",
@@ -352,7 +433,9 @@ async def book_visitor_pass(
         valid_from=new_visit.valid_from,
         valid_until=new_visit.valid_until,
         max_duration_minutes=new_visit.max_duration_minutes,
-        status=new_pass.status,
+        status=new_visit.status,
+        approval_status=approval_status,
+        rejection_reason=new_visit.rejection_reason,
         generated_at=new_pass.generated_at
     )
 
@@ -381,6 +464,7 @@ def get_my_visitor_passes(
                     visitor_civil_id=visitor.civil_id,
                     visitor_mobile=visitor.mobile_number,
                     visitor_type=visitor.visitor_type,
+                    relationship=v.visitor_relationship,
                     patient_name=v.patient.full_name if v.patient else "Patient",
                     patient_hospital_number=v.patient.hospital_number if v.patient else "N/A",
                     ward_name=v.ward.name if v.ward else "Ward",
@@ -389,9 +473,118 @@ def get_my_visitor_passes(
                     valid_from=v.valid_from,
                     valid_until=v.valid_until,
                     max_duration_minutes=v.max_duration_minutes,
-                    status=v.pass_obj.status,
+                    status=v.status,
+                    approval_status="APPROVED" if v.status != "PENDING_APPROVAL" else "PENDING_APPROVAL",
+                    rejection_reason=v.rejection_reason,
                     generated_at=v.pass_obj.generated_at
                 )
             )
 
     return results
+
+# ============================================================================
+# RECEPTION APPROVAL QUEUE ENDPOINTS (TIER 1 STAFF ONLY)
+# ============================================================================
+
+@router.get("/pending-requests")
+def get_pending_visit_requests(
+    current_user: User = Depends(require_staff_user),
+    db: Session = Depends(get_db)
+):
+    pending_visits = db.query(Visit).filter(
+        Visit.status == "PENDING_APPROVAL"
+    ).order_by(Visit.registered_at.asc()).all()
+
+    items = []
+    for v in pending_visits:
+        items.append({
+            "visit_id": v.id,
+            "visit_number": v.visit_number,
+            "pass_code": v.pass_obj.pass_code if v.pass_obj else "N/A",
+            "visitor_name": v.visitor.full_name,
+            "visitor_civil_id": v.visitor.civil_id,
+            "visitor_mobile": v.visitor.mobile_number,
+            "relationship": v.visitor_relationship or "FIRST_DEGREE",
+            "patient_name": v.patient.full_name,
+            "patient_hospital_number": v.patient.hospital_number,
+            "ward_name": v.ward.name if v.ward else "General Ward",
+            "room_number": v.patient.room.room_number if (v.patient and v.patient.room) else "N/A",
+            "bed": v.patient.bed,
+            "duration_minutes": v.max_duration_minutes,
+            "registered_at": v.registered_at,
+            "status": v.status
+        })
+
+    return items
+
+@router.post("/requests/{visit_id}/approve")
+async def approve_visit_request(
+    visit_id: int,
+    current_user: User = Depends(require_staff_user),
+    db: Session = Depends(get_db)
+):
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit request not found")
+
+    visit.status = "REGISTERED"
+    if visit.pass_obj:
+        visit.pass_obj.status = "ACTIVE"
+    db.commit()
+
+    log_audit(
+        db=db,
+        action="VISIT_REQUEST_APPROVED",
+        user_id=current_user.id,
+        username=current_user.username,
+        entity_type="VISIT",
+        entity_id=str(visit.id),
+        details={"visit_number": visit.visit_number, "approved_by": current_user.username}
+    )
+
+    await ws_manager.broadcast({
+        "type": "VISIT_REQUEST_APPROVED",
+        "visit_id": visit.id,
+        "visit_number": visit.visit_number,
+        "status": "REGISTERED"
+    })
+
+    return {"status": "SUCCESS", "message": "Visit request approved successfully", "visit_id": visit.id}
+
+@router.post("/requests/{visit_id}/reject")
+async def reject_visit_request(
+    visit_id: int,
+    payload: dict,
+    current_user: User = Depends(require_staff_user),
+    db: Session = Depends(get_db)
+):
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit request not found")
+
+    reason = payload.get("reason", "Rejected per hospital visitor policy")
+    visit.status = "REJECTED"
+    visit.rejection_reason = reason
+    if visit.pass_obj:
+        visit.pass_obj.status = "REVOKED"
+    db.commit()
+
+    log_audit(
+        db=db,
+        action="VISIT_REQUEST_REJECTED",
+        user_id=current_user.id,
+        username=current_user.username,
+        entity_type="VISIT",
+        entity_id=str(visit.id),
+        details={"visit_number": visit.visit_number, "reason": reason}
+    )
+
+    await ws_manager.broadcast({
+        "type": "VISIT_REQUEST_REJECTED",
+        "visit_id": visit.id,
+        "visit_number": visit.visit_number,
+        "status": "REJECTED",
+        "reason": reason
+    })
+
+    return {"status": "REJECTED", "message": "Visit request rejected", "visit_id": visit.id}

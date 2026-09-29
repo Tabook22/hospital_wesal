@@ -13,8 +13,10 @@ class Visit(Base):
     ward_id = Column(Integer, ForeignKey("wards.id"), nullable=False)
     service_type = Column(String(30), default="PATIENT_VISIT")  # PATIENT_VISIT, COMPANION_ACCESS
 
-    # REGISTERED, ACTIVE, ENDING_SOON, OVERDUE, CHECKED_OUT, CANCELLED
+    # PENDING_APPROVAL, REGISTERED, ACTIVE, ENDING_SOON, OVERDUE, CHECKED_OUT, CANCELLED, REJECTED
     status = Column(String(30), default="REGISTERED", index=True, nullable=False)
+    visitor_relationship = Column(String(50), nullable=True)  # FIRST_DEGREE, SECOND_DEGREE, EXTENDED_FAMILY, FRIEND, COMPANION
+    rejection_reason = Column(String(255), nullable=True)
 
     registered_at = Column(DateTime, default=datetime.utcnow)
     valid_from = Column(DateTime, nullable=False)

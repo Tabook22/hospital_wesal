@@ -3,7 +3,8 @@ import {
   Visit, VisitorPass, ScanResult, DashboardData, NotificationItem,
   PolicySettings, TodayReport, WardReportItem, DenialReportItem,
   CurrentLiveReport, AuditLogItem,
-  VisitorPatientSearchItem, VisitorPassBookRequest, VisitorPassDetail, VisitorRegisterRequest
+  VisitorPatientSearchItem, VisitorPassBookRequest, VisitorPassDetail, VisitorRegisterRequest,
+  PendingVisitRequest
 } from '../types';
 
 const getApiBase = () => {
@@ -170,4 +171,15 @@ export const api = {
     }),
   getMyVisitorPasses: () =>
     request<VisitorPassDetail[]>('/visitor/my-passes'),
+  getPendingVisitRequests: () =>
+    request<PendingVisitRequest[]>('/visitor/pending-requests'),
+  approveVisitRequest: (visitId: number) =>
+    request<{ message: string; visit_id: number; status: string }>(`/visitor/requests/${visitId}/approve`, {
+      method: 'POST',
+    }),
+  rejectVisitRequest: (visitId: number, reason?: string) =>
+    request<{ message: string; visit_id: number; status: string }>(`/visitor/requests/${visitId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
 };
