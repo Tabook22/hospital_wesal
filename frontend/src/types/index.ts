@@ -83,12 +83,13 @@ export interface VisitorPass {
   secure_token: string;
   qr_payload: string;
   qr_image_base64?: string;
-  status: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED';
+  status: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED' | 'PENDING';
   generated_at: string;
   revoked_at?: string;
 }
 
-export type VisitStatus = 'REGISTERED' | 'ACTIVE' | 'ENDING_SOON' | 'OVERDUE' | 'CHECKED_OUT' | 'CANCELLED';
+export type VisitStatus = 'REGISTERED' | 'ACTIVE' | 'ENDING_SOON' | 'OVERDUE' | 'CHECKED_OUT' | 'CANCELLED' | 'PENDING_APPROVAL' | 'REJECTED';
+
 
 export interface Visit {
   id: number;
