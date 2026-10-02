@@ -16,7 +16,9 @@ from app.models.scan import ScanEvent
 from app.models.notification import Notification
 from app.models.policy import VisitPolicy
 from app.models.audit import AuditLog
+from app.models.incident import StaffIncident
 from app.services.qr_service import generate_qr_base64
+
 
 def seed_database():
     Base.metadata.create_all(bind=engine)
@@ -61,11 +63,68 @@ def seed_database():
                 p.visitation_category = "LIMITED"
             else:
                 p.visitation_category = "ALLOWED"
+
+        # Ensure demo staff incidents exist
+        if db.query(StaffIncident).count() == 0:
+            sample_incidents = [
+                StaffIncident(
+                    incident_number="INC-2026-0001",
+                    reporter_name="مريم الكثيري (تمريض)",
+                    reporter_role="NURSE",
+                    category="OVERCROWDING",
+                    severity="URGENT",
+                    ward_name="Medical Ward A",
+                    location_details="غرفة 201 — سرير B",
+                    patient_name="سالم سعيد الشنفري",
+                    title="تكدس زوار عند سرير المريض وتجاوز الطاقة الاستيعابية",
+                    description="يوجد حالياً أكثر من 5 زوار متجمعين حول المريض في نفس الوقت مما يعيق عمل التمريض وإعطاء الأدوية، والحد الأقصى هو زائران فقط.",
+                    suggested_action="إرسال الأمن أو الاستقبال لتوجيه باقي الزوار إلى صالة الانتظار وتنظيم الدخول بالتناوب.",
+                    status="OPEN",
+                    created_at=datetime.utcnow() - timedelta(minutes=18)
+                ),
+                StaffIncident(
+                    incident_number="INC-2026-0002",
+                    reporter_name="فاطمة المعشني (مشرفة جناح)",
+                    reporter_role="WARD_SUPERVISOR",
+                    category="NOISE_DISTURBANCE",
+                    severity="HIGH",
+                    ward_name="Pediatric Ward",
+                    location_details="ممر الأطفال الشرقي — أمام غرفة 104",
+                    title="أطفال يصدرون أصواتاً مرتفعة وضوضاء بالممر",
+                    description="مجموعة أطفال مرافقين لزوار يركضون ويصدرون أصواتاً عالية تسبب إزعاجاً وقلقاً للأطفال المنومين في فترة الراحة.",
+                    suggested_action="تنبيه أولياء الأمور بلباقة للالتزام بهدوء المستشفى أو مرافقة الأطفال إلى منطقة الانتظار الخارجية.",
+                    status="DISPATCHED",
+                    admin_notes="تم توجيه دورية الأمن للموقع والتواصل مع العائلة لتهدئة الموقف.",
+                    resolved_by="مشرف الأمن والسلامة",
+                    created_at=datetime.utcnow() - timedelta(minutes=42)
+                ),
+                StaffIncident(
+                    incident_number="INC-2026-0003",
+                    reporter_name="د. خالد العمري (طبيب مقيم)",
+                    reporter_role="DOCTOR",
+                    category="UNAUTHORIZED_AREA",
+                    severity="URGENT",
+                    ward_name="Intensive Care Unit (ICU)",
+                    location_details="بوابة العناية المركزة الداخلية",
+                    title="زائر متواجد داخل قسم العناية المركزة بدون تصريح معتمد",
+                    description="تمت ملاحظة زائر داخل ممر العناية المركزة دون حمل بطاقة تصريح إلكترونية معتمدة للقسم. هذا يعرض المرضى لمخاطر العدوى.",
+                    suggested_action="مرافقة الزائر فوراً إلى خارج القسم وتوجيهه لمكتب الاستقبال.",
+                    status="RESOLVED",
+                    admin_notes="تمت مرافقة الزائر للخارج وإرشاده لإصدار تصريح رسمي حسب البروتوكول الطبي.",
+                    resolved_by="إدارة الاستقبال",
+                    resolved_at=datetime.utcnow() - timedelta(minutes=10),
+                    created_at=datetime.utcnow() - timedelta(hours=1, minutes=15)
+                )
+            ]
+            db.add_all(sample_incidents)
+            print("Seeded sample staff incidents successfully.")
+
         db.commit()
 
         print("Database already contains records. Skipping full seed.")
         db.close()
         return
+
 
     print("Seeding Sultan Qaboos Hospital demo database...")
 

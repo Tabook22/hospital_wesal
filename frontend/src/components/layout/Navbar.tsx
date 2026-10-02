@@ -4,11 +4,12 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useLiveUpdates } from '../../hooks/useLiveUpdates';
 import {
   Shield, UserCheck, Stethoscope, LogOut, Radio, QrCode,
-  Sparkles, Building2, Globe, BookOpen, Menu, Users
+  Sparkles, Building2, Globe, BookOpen, Menu, Users, ShieldAlert
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserRole } from '../../types';
 import { AdminWorkflowGuide } from '../common/AdminWorkflowGuide';
+import { QuickIncidentModal } from '../incidents/QuickIncidentModal';
 
 interface NavbarProps {
   onToggleMenu?: () => void;
@@ -20,6 +21,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMenu }) => {
   const { lang, toggleLang, isRtl, t } = useLanguage();
   const navigate = useNavigate();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
+
 
   const handleRoleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     switchRole(e.target.value as UserRole);
@@ -140,6 +143,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMenu }) => {
                 <span>{lang === 'ar' ? 'بوابة الزوار' : 'Visitor Portal'}</span>
               </Link>
 
+              {/* Quick Incident Reporting Trigger (Available to any staff anywhere) */}
+              <button
+                onClick={() => setIsIncidentModalOpen(true)}
+                className="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:border-rose-300 text-xs font-bold transition-all shadow-sm group"
+                title={lang === 'ar' ? 'إرسال بلاغ أو ملاحظة إدارية عاجلة' : 'Report Urgent Incident / Staff Notice'}
+              >
+                <ShieldAlert className="w-4 h-4 text-rose-600 group-hover:scale-110 transition-transform" />
+                <span className="hidden sm:inline">
+                  {lang === 'ar' ? 'بلاغ عاجل' : 'Report Incident'}
+                </span>
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping hidden sm:inline-block" />
+              </button>
+
               {/* Logout */}
               <button
                 onClick={() => {
@@ -158,6 +174,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMenu }) => {
 
       {/* Interactive Modal Guide */}
       <AdminWorkflowGuide isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+
+      {/* Global Quick Incident Modal */}
+      <QuickIncidentModal
+        isOpen={isIncidentModalOpen}
+        onClose={() => setIsIncidentModalOpen(false)}
+      />
     </>
   );
 };
+

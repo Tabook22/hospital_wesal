@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   LayoutDashboard, UserPlus, Users, UserCheck, ShieldAlert,
-  QrCode, Radio, BarChart3, Settings, Bell, Sparkles, Navigation
+  QrCode, Radio, BarChart3, Settings, Bell, Sparkles, Navigation, AlertOctagon
 } from 'lucide-react';
 
 interface NavItem {
@@ -27,6 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
     { key: 'nav.reception', name: t('nav.reception'), href: '/reception', icon: UserPlus },
     { key: 'nav.gate', name: t('nav.gate'), href: '/gate', icon: QrCode, badge: 'Scanner' },
     { key: 'nav.live', name: t('nav.live'), href: '/live', icon: Radio, badge: 'Live' },
+    { key: 'nav.incidents', name: lang === 'ar' ? 'بلاغات وملاحظات الكادر' : 'Staff Incidents', href: '/incidents', icon: AlertOctagon, badge: 'Urgent' },
     { key: 'nav.passes', name: t('nav.passes'), href: '/passes', icon: ShieldAlert },
     { key: 'nav.visitors', name: t('nav.visitors'), href: '/visitors', icon: Users },
     { key: 'nav.patients', name: t('nav.patients'), href: '/patients', icon: UserCheck },
@@ -36,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
     { key: 'nav.settings', name: t('nav.settings'), href: '/settings', icon: Settings },
     { key: 'nav.demo', name: t('nav.demo'), href: '/demo', icon: Sparkles, badge: 'Demo' },
   ];
+
 
   const sidebarContent = (
     <div className="flex flex-col justify-between h-full p-4 overflow-y-auto">
@@ -71,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
             {t('nav.operations')}
           </p>
           <nav className="space-y-1">
-            {navItems.slice(0, 5).map((item) => (
+            {navItems.slice(0, 6).map((item) => (
               <NavLink
                 key={item.href}
                 to={item.href}
@@ -103,7 +105,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
             {t('nav.management')}
           </p>
           <nav className="space-y-1">
-            {navItems.slice(5).map((item) => (
+            {navItems.slice(6).map((item) => (
+
               <NavLink
                 key={item.href}
                 to={item.href}

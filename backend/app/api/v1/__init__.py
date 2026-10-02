@@ -11,13 +11,14 @@ from app.api.v1.alerts import router as alerts_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.audit import router as audit_router
-from app.api.v1.ws import router as ws_router
 from app.api.v1.visitor_portal import router as visitor_router
+from app.api.v1.incidents import router as incidents_router
 
 api_router = APIRouter()
 
 api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(visitor_router, prefix="/visitor", tags=["Visitor Portal"])
+api_router.include_router(incidents_router, tags=["Staff Incidents & Messaging"])
 api_router.include_router(patients_router, prefix="/patients", tags=["Patients"])
 api_router.include_router(visitors_router, prefix="/visitors", tags=["Visitors"])
 api_router.include_router(visits_router, prefix="/visits", tags=["Visits"])
@@ -30,3 +31,4 @@ api_router.include_router(reports_router, prefix="/reports", tags=["Operational 
 api_router.include_router(settings_router, prefix="/settings", tags=["Settings"])
 api_router.include_router(audit_router, prefix="/audit-logs", tags=["Audit Log"])
 api_router.include_router(ws_router, tags=["WebSockets"])
+

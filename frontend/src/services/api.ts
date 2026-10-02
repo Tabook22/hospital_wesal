@@ -4,8 +4,10 @@ import {
   PolicySettings, TodayReport, WardReportItem, DenialReportItem,
   CurrentLiveReport, AuditLogItem,
   VisitorPatientSearchItem, VisitorPassBookRequest, VisitorExpressBookRequest, VisitorPassDetail, VisitorRegisterRequest,
-  PendingVisitRequest
+  PendingVisitRequest,
+  StaffIncidentItem, StaffIncidentCreatePayload, StaffIncidentUpdatePayload, IncidentStats
 } from '../types';
+
 
 const getApiBase = () => {
   if (import.meta.env.VITE_API_BASE) {
@@ -191,4 +193,30 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ reason }),
     }),
+
+  // Staff Incidents & Internal Employee Messaging
+  getIncidents: (params?: { status?: string; severity?: string; category?: string; ward_name?: string; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.append('status', params.status);
+    if (params?.severity) q.append('severity', params.severity);
+    if (params?.category) q.append('category', params.category);
+    if (params?.ward_name) q.append('ward_name', params.ward_name);
+    if (params?.limit) q.append('limit', params.limit.toString());
+    return request<StaffIncidentItem[]>(`/incidents?${q.toString()}`);
+  },
+  getIncidentStats: () =>
+    request<IncidentStats>('/incidents/stats'),
+  getIncident: (id: number) =>
+    request<StaffIncidentItem>(`/incidents/${id}`),
+  createIncident: (payload: StaffIncidentCreatePayload) =>
+    request<StaffIncidentItem>('/incidents', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateIncidentStatus: (id: number, payload: StaffIncidentUpdatePayload) =>
+    request<StaffIncidentItem>(`/incidents/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
 };
+

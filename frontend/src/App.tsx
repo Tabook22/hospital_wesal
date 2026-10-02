@@ -27,6 +27,8 @@ import { ReportsPage } from './pages/ReportsPage';
 import { CheckpointsPage } from './pages/CheckpointsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { DemoControlPage } from './pages/DemoControlPage';
+import { IncidentsPage } from './pages/IncidentsPage';
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -104,7 +106,9 @@ export const App: React.FC = () => {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="reception" element={<ReceptionPage />} />
                 <Route path="passes" element={<VisitorPassPage />} />
+                <Route path="incidents" element={<IncidentsPage />} />
                 <Route path="gate" element={<GateScannerPage />} />
+
                 <Route path="live" element={<LiveMonitorPage />} />
                 <Route path="visitors" element={<VisitorsListPage />} />
                 <Route path="visitors/:id" element={<VisitorDetailPage />} />

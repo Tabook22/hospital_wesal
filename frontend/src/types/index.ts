@@ -366,3 +366,75 @@ export interface VisitorRegisterRequest {
   civil_id: string;
 }
 
+// Staff Incidents & Internal Employee Messaging
+export type IncidentCategory =
+  | 'UNAUTHORIZED_AREA'
+  | 'NOISE_DISTURBANCE'
+  | 'OVERCROWDING'
+  | 'URGENT_ACTION'
+  | 'VISITING_HOURS_VIOLATION'
+  | 'BEHAVIORAL_ISSUE'
+  | 'OTHER';
+
+export type IncidentSeverity = 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW';
+
+export type IncidentStatus = 'OPEN' | 'DISPATCHED' | 'RESOLVED' | 'DISMISSED';
+
+export interface StaffIncidentItem {
+  id: number;
+  incident_number: string;
+  reporter_id?: number;
+  reporter_name: string;
+  reporter_role: string;
+  category: IncidentCategory;
+  severity: IncidentSeverity;
+  ward_id?: number;
+  ward_name: string;
+  location_details?: string;
+  visitor_id?: number;
+  visitor_name?: string;
+  pass_code?: string;
+  patient_id?: number;
+  patient_name?: string;
+  title: string;
+  description: string;
+  suggested_action?: string;
+  status: IncidentStatus;
+  admin_notes?: string;
+  resolved_by?: string;
+  resolved_at?: string;
+  created_at: string;
+}
+
+export interface StaffIncidentCreatePayload {
+  category: IncidentCategory;
+  severity: IncidentSeverity;
+  ward_id?: number;
+  ward_name: string;
+  location_details?: string;
+  reporter_name: string;
+  reporter_role?: string;
+  visitor_name?: string;
+  pass_code?: string;
+  patient_name?: string;
+  patient_id?: number;
+  title: string;
+  description: string;
+  suggested_action?: string;
+}
+
+export interface StaffIncidentUpdatePayload {
+  status: IncidentStatus;
+  admin_notes?: string;
+  resolved_by?: string;
+}
+
+export interface IncidentStats {
+  total_today: number;
+  open_count: number;
+  urgent_count: number;
+  dispatched_count: number;
+  resolved_today_count: number;
+}
+
+
