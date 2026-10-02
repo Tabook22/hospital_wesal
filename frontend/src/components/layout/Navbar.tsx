@@ -4,7 +4,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useLiveUpdates } from '../../hooks/useLiveUpdates';
 import {
   Shield, UserCheck, Stethoscope, LogOut, Radio, QrCode,
-  Sparkles, Building2, Globe, BookOpen, Menu, Users, ShieldAlert
+  Sparkles, Building2, Globe, BookOpen, Menu, Users, ShieldAlert,
+  ArrowLeft
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserRole } from '../../types';
@@ -33,7 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMenu }) => {
       <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 no-print transition-all">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center gap-2">
-            {/* Left: Mobile Menu Button & Brand */}
+            {/* Left: Mobile Menu Button, Go Back & Brand */}
             <div className="flex items-center space-x-2 sm:space-x-3 rtl:space-x-reverse min-w-0">
               {/* Mobile Hamburger Drawer Trigger */}
               <button
@@ -45,20 +46,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMenu }) => {
                 <Menu className="w-5 h-5" />
               </button>
 
-              <Link to="/dashboard" className="flex items-center space-x-2 sm:space-x-3 rtl:space-x-reverse group min-w-0">
+              {/* Dedicated Go Back Button */}
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all shadow-xs flex items-center gap-1 group"
+                title={lang === 'ar' ? 'رجوع للصفحة السابقة' : 'Go Back'}
+                aria-label={lang === 'ar' ? 'رجوع للصفحة السابقة' : 'Go Back'}
+              >
+                <ArrowLeft className="w-4 h-4 rtl:rotate-180 text-slate-600 group-hover:text-slate-900 transition-transform group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" />
+                <span className="hidden sm:inline text-xs font-bold">{lang === 'ar' ? 'رجوع' : 'Back'}</span>
+              </button>
+
+              <Link
+                to="/gateway"
+                title={lang === 'ar' ? 'الصفحة الرئيسية — بوابة الأدوار' : 'Homepage — Gate'}
+                className="flex items-center space-x-2 sm:space-x-3 rtl:space-x-reverse group min-w-0"
+              >
                 <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-gradient-to-tr from-hospital-700 via-hospital-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-hospital-500/20 group-hover:scale-105 transition-transform">
                   <Shield className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center space-x-1.5 rtl:space-x-reverse">
-                    <span className="font-black text-lg sm:text-xl tracking-tight bg-gradient-to-r from-hospital-800 to-indigo-800 bg-clip-text text-transparent">
+                    <span className="font-black text-lg sm:text-xl tracking-tight bg-gradient-to-r from-hospital-800 to-indigo-800 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
                       {lang === 'ar' ? 'وصل' : 'WESAL'}
                     </span>
                     <span className="text-[9px] sm:text-[10px] bg-hospital-100 text-hospital-800 px-1.5 py-0.2 rounded-full font-bold border border-hospital-200 shrink-0">
                       {lang === 'ar' ? 'WESAL' : 'وصل'}
                     </span>
                   </div>
-                  <p className="text-[10px] sm:text-xs text-slate-500 font-medium flex items-center gap-1 truncate max-w-[130px] sm:max-w-none">
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-medium flex items-center gap-1 truncate max-w-[130px] sm:max-w-none group-hover:text-slate-700 transition-colors">
                     <Building2 className="w-3 h-3 text-hospital-500 shrink-0" />
                     <span className="truncate">{t('hospital.name')}</span>
                   </p>

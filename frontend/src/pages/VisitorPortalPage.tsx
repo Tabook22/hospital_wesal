@@ -6,7 +6,7 @@ import {
   AlertTriangle, XCircle, Printer, Download, LogOut,
   Sparkles, RefreshCw, UserCheck, HeartHandshake, Eye, AlertCircle,
   Lock, Hourglass, ShieldAlert, Check, UserPlus, Phone, CreditCard,
-  User, ChevronRight, Compass, ArrowRight, Share2, Info
+  User, ChevronRight, Compass, ArrowRight, Share2, Info, ArrowLeft
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../services/api';
@@ -223,21 +223,42 @@ export const VisitorPortalPage: React.FC = () => {
       {/* Top Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-sm font-black text-slate-900 flex items-center gap-2">
-                <span>WESAL | وصل</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  {lang === 'ar' ? 'تصريح الزائر السريع' : 'Express Pass'}
-                </span>
+          {/* Go Back & Brand Logo */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Dedicated Go Back Button */}
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all shadow-xs flex items-center gap-1 group"
+              title={lang === 'ar' ? 'رجوع للصفحة السابقة' : 'Go Back'}
+              aria-label={lang === 'ar' ? 'رجوع للصفحة السابقة' : 'Go Back'}
+            >
+              <ArrowLeft className="w-4 h-4 rtl:rotate-180 text-slate-600 group-hover:text-slate-900 transition-transform group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" />
+              <span className="hidden sm:inline text-xs font-bold">{lang === 'ar' ? 'رجوع' : 'Back'}</span>
+            </button>
+
+            {/* Clickable Brand Logo & Label -> Goes to Homepage */}
+            <button
+              type="button"
+              onClick={() => navigate('/gateway')}
+              className="flex items-center gap-2.5 sm:gap-3 hover:opacity-85 transition-opacity text-left rtl:text-right group"
+              title={lang === 'ar' ? 'الصفحة الرئيسية — بوابة الأدوار' : 'Homepage — Gate'}
+            >
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform shrink-0">
+                <Shield className="w-5 h-5" />
               </div>
-              <div className="text-[11px] text-slate-500">
-                {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
+              <div>
+                <div className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <span className="group-hover:text-emerald-700 transition-colors">WESAL | وصل</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    {lang === 'ar' ? 'تصريح الزائر السريع' : 'Express Pass'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-500 group-hover:text-slate-700 transition-colors">
+                  {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
+                </div>
               </div>
-            </div>
+            </button>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">

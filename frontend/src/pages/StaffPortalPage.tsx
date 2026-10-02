@@ -1,10 +1,11 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, Building2, Users, Volume2, ShieldAlert, AlertOctagon,
   Clock, CheckCircle2, AlertTriangle, RefreshCw, LogOut,
-  Languages, MapPin, User, MessageSquare, Plus, Sparkles, Radio
+  Languages, MapPin, User, MessageSquare, Plus, Sparkles, Radio,
+  ArrowLeft
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -149,22 +150,44 @@ export const StaffPortalPage: React.FC = () => {
       {/* Top Professional Header Bar */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Logo & Hospital Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-hospital-700 to-hospital-500 text-white flex items-center justify-center shadow-md shadow-hospital-500/20">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-black text-slate-900 tracking-tight">WESAL — وصل</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-hospital-100 text-hospital-800 border border-hospital-200">
-                  {lang === 'ar' ? 'بوابة الكادر الطبي والتمريضي' : 'Clinical Staff Portal'}
-                </span>
+          {/* Go Back & Logo / Hospital Title */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Go Back Button */}
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all shadow-xs flex items-center gap-1 group"
+              title={lang === 'ar' ? 'رجوع للصفحة السابقة' : 'Go Back'}
+              aria-label={lang === 'ar' ? 'رجوع للصفحة السابقة' : 'Go Back'}
+            >
+              <ArrowLeft className="w-4 h-4 rtl:rotate-180 text-slate-600 group-hover:text-slate-900 transition-transform group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" />
+              <span className="hidden sm:inline text-xs font-bold">{lang === 'ar' ? 'رجوع' : 'Back'}</span>
+            </button>
+
+            {/* Clickable Brand Logo & Label -> Goes to Homepage */}
+            <button
+              type="button"
+              onClick={() => navigate('/gateway')}
+              className="flex items-center gap-2.5 sm:gap-3 hover:opacity-85 transition-opacity text-left rtl:text-right group"
+              title={lang === 'ar' ? 'الصفحة الرئيسية — بوابة الأدوار' : 'Homepage — Gate'}
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-hospital-700 to-hospital-500 text-white flex items-center justify-center shadow-md shadow-hospital-500/20 group-hover:scale-105 transition-transform shrink-0">
+                <Shield className="w-5 h-5" />
               </div>
-              <div className="text-xs text-slate-500">
-                {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-black text-slate-900 tracking-tight group-hover:text-hospital-700 transition-colors">
+                    WESAL — وصل
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-hospital-100 text-hospital-800 border border-hospital-200">
+                    {lang === 'ar' ? 'بوابة الكادر الطبي والتمريضي' : 'Clinical Staff Portal'}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 group-hover:text-slate-700 transition-colors">
+                  {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
+                </div>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* User Info & Actions */}

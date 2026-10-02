@@ -59,11 +59,12 @@ export const LoginPage: React.FC = () => {
       <div className="absolute top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-6 flex items-center justify-between pointer-events-auto">
         <button
           type="button"
-          onClick={() => navigate('/gateway')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition-all group"
+          title={lang === 'ar' ? 'رجوع للصفحة السابقة' : 'Go Back'}
         >
-          <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-180" />
-          <span>{lang === 'ar' ? 'بوابة الأدوار' : 'Role Gate'}</span>
+          <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-180 text-slate-600 group-hover:text-slate-900 transition-transform group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" />
+          <span>{lang === 'ar' ? 'رجوع' : 'Back'}</span>
         </button>
 
         <button
@@ -77,24 +78,32 @@ export const LoginPage: React.FC = () => {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center pt-8 sm:pt-0">
-        {/* Hospital & Vision Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm mb-4">
-          <Building2 className="w-4 h-4 text-hospital-600" />
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-700">
-            {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
-          </span>
-        </div>
-
-        {/* Brand Logo */}
-        <div className="flex justify-center mb-3">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-hospital-700 to-hospital-500 flex items-center justify-center text-white shadow-xl shadow-hospital-500/25">
-            <Shield className="w-7 h-7 sm:w-8 sm:h-8" />
+        {/* Clickable Brand / Hospital Logo & Label -> Goes to Homepage */}
+        <button
+          type="button"
+          onClick={() => navigate('/gateway')}
+          className="group inline-flex flex-col items-center hover:opacity-90 transition-opacity"
+          title={lang === 'ar' ? 'الصفحة الرئيسية — بوابة الأدوار' : 'Homepage — Gate'}
+        >
+          {/* Hospital & Vision Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm mb-4 group-hover:border-hospital-300 transition-colors">
+            <Building2 className="w-4 h-4 text-hospital-600" />
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-700">
+              {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
+            </span>
           </div>
-        </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          {lang === 'ar' ? 'وصل — WESAL' : 'WESAL — وصل'}
-        </h1>
+          {/* Brand Logo */}
+          <div className="flex justify-center mb-3">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-hospital-700 to-hospital-500 flex items-center justify-center text-white shadow-xl shadow-hospital-500/25 group-hover:scale-105 transition-transform">
+              <Shield className="w-7 h-7 sm:w-8 sm:h-8" />
+            </div>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight group-hover:text-hospital-700 transition-colors">
+            {lang === 'ar' ? 'وصل — WESAL' : 'WESAL — وصل'}
+          </h1>
+        </button>
         <p className="text-xs sm:text-sm font-medium text-hospital-700 mt-1">
           {t('brand.subtitle')}
         </p>

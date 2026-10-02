@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, Building2, Users, ArrowRight, CheckCircle2,
-  Lock, QrCode, Search, Activity, Languages, Sparkles
+  Lock, QrCode, Search, Activity, Languages, Sparkles, ArrowLeft
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -14,21 +14,41 @@ export const RoleSelectionPage: React.FC = () => {
     <div className="min-h-[100dvh] bg-gradient-to-b from-slate-50 via-hospital-50/30 to-slate-100 flex flex-col justify-between py-6 px-4 sm:px-8">
       {/* Top Navbar */}
       <div className="max-w-5xl w-full mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-hospital-600 text-white flex items-center justify-center shadow-md shadow-hospital-600/20">
-            <Shield className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span>WESAL — وصل</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-hospital-100 text-hospital-800">
-                {lang === 'ar' ? 'بوابة الأدوار' : 'Dual-Role Gate'}
-              </span>
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Go Back to Splash */}
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center gap-1 shadow-sm transition-colors group"
+            title={lang === 'ar' ? 'رجوع للشاشة الترحيبية' : 'Go Back to Splash'}
+            aria-label={lang === 'ar' ? 'رجوع للشاشة الترحيبية' : 'Go Back to Splash'}
+          >
+            <ArrowLeft className="w-4 h-4 rtl:rotate-180 text-slate-600 group-hover:text-slate-900 transition-transform group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" />
+            <span className="hidden sm:inline">{lang === 'ar' ? 'رجوع' : 'Back'}</span>
+          </button>
+
+          {/* Clickable Brand Logo & Label -> Goes to Homepage / Splash */}
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2.5 sm:gap-3 hover:opacity-85 transition-opacity text-left rtl:text-right group"
+            title={lang === 'ar' ? 'الصفحة الترحيبية الرئيسية' : 'Homepage / Splash'}
+          >
+            <div className="w-10 h-10 rounded-xl bg-hospital-600 text-white flex items-center justify-center shadow-md shadow-hospital-600/20 group-hover:scale-105 transition-transform shrink-0">
+              <Shield className="w-5 h-5" />
             </div>
-            <div className="text-xs text-slate-500">
-              {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
+            <div>
+              <div className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <span className="group-hover:text-hospital-700 transition-colors">WESAL — وصل</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-hospital-100 text-hospital-800">
+                  {lang === 'ar' ? 'بوابة الأدوار' : 'Dual-Role Gate'}
+                </span>
+              </div>
+              <div className="text-xs text-slate-500 group-hover:text-slate-700 transition-colors">
+                {lang === 'ar' ? 'مستشفى السلطان قابوس — صلالة' : 'Sultan Qaboos Hospital — Salalah'}
+              </div>
             </div>
-          </div>
+          </button>
         </div>
 
         <button
