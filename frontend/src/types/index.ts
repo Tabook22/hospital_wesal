@@ -301,6 +301,17 @@ export interface VisitorPassBookRequest {
   notes?: string;
 }
 
+export interface VisitorExpressBookRequest {
+  patient_id: number;
+  full_name: string;
+  civil_id: string;
+  mobile_number: string;
+  visitor_type?: string;
+  relationship?: string;
+  duration_minutes?: number;
+  notes?: string;
+}
+
 export interface VisitorPassDetail {
   visit_id: number;
   visit_number: string;

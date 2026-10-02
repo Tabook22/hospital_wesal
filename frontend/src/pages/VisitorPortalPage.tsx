@@ -2,15 +2,41 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Search, Shield, Users, QrCode, Clock, Calendar, CheckCircle2,
-  AlertTriangle, XCircle, Printer, ArrowLeft, LogOut, Building2,
+  Search, Shield, Users, QrCode, Clock, CheckCircle2,
+  AlertTriangle, XCircle, Printer, Download, LogOut,
   Sparkles, RefreshCw, UserCheck, HeartHandshake, Eye, AlertCircle,
-  Lock, Hourglass, ShieldAlert, Check, UserPlus
+  Lock, Hourglass, ShieldAlert, Check, UserPlus, Phone, CreditCard,
+  User, ChevronRight, Compass, ArrowRight, Share2, Info
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../services/api';
-import { VisitorPatientSearchItem, VisitorPassDetail } from '../types';
+import { VisitorPatientSearchItem, VisitorPassDetail, VisitorExpressBookRequest } from '../types';
+
+interface SavedVisitorProfile {
+  fullName: string;
+  civilId: string;
+  mobileNumber: string;
+}
+
+const STORAGE_PROFILE_KEY = 'wesal_visitor_profile';
+
+const getStoredProfile = (): SavedVisitorProfile => {
+  try {
+    const raw = localStorage.getItem(STORAGE_PROFILE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (err) {
+    console.error('Failed to parse visitor profile from localStorage', err);
+  }
+  return { fullName: '', civilId: '', mobileNumber: '' };
+};
+
+const saveStoredProfile = (profile: SavedVisitorProfile) => {
+  try {
+    localStorage.setItem(STORAGE_PROFILE_KEY, JSON.stringify(profile));
+  } catch (err) {
+    console.error('Failed to save visitor profile to localStorage', err);
+  }
+};
 
 const getLocalizedWard = (wardName: string, lang: string) => {
   if (lang !== 'ar') return wardName;
@@ -33,10 +59,17 @@ const getLocalizedRoomBed = (room: string, bed: string, lang: string) => {
 
 export const VisitorPortalPage: React.FC = () => {
   const { lang, toggleLang } = useLanguage();
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Profile state (No username/password required!)
+  const [profile, setProfile] = useState<SavedVisitorProfile>(getStoredProfile);
+  const [fullName, setFullName] = useState(profile.fullName);
+  const [civilId, setCivilId] = useState(profile.civilId);
+  const [mobileNumber, setMobileNumber] = useState(profile.mobileNumber);
+  const [isEditingProfile, setIsEditingProfile] = useState(!profile.civilId);
+
+  // Tab & search states
   const [activeTab, setActiveTab] = useState<'SEARCH' | 'PASSES'>('SEARCH');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<VisitorPatientSearchItem | null>(null);
@@ -46,6 +79,10 @@ export const VisitorPortalPage: React.FC = () => {
   const [visitorType, setVisitorType] = useState<'VISITOR' | 'COMPANION'>('VISITOR');
   const [durationMinutes, setDurationMinutes] = useState<number>(20);
   const [bookingNotes, setBookingNotes] = useState('');
+
+  // Lookup / retrieve pass modal state
+  const [showLookupModal, setShowLookupModal] = useState(false);
+  const [lookupCivilId, setLookupCivilId] = useState('');
 
   // Generated Active Pass modal / view state
   const [activePass, setActivePass] = useState<VisitorPassDetail | null>(null);
@@ -57,16 +94,30 @@ export const VisitorPortalPage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Update profile in localStorage whenever valid details change
+  const handleSaveProfile = () => {
+    const trimmed = {
+      fullName: fullName.trim(),
+      civilId: civilId.trim(),
+      mobileNumber: mobileNumber.trim(),
+    };
+    setProfile(trimmed);
+    saveStoredProfile(trimmed);
+    setIsEditingProfile(false);
+  };
+
   // 1. Search Admitted Patients Query (only enabled when searchQuery length >= 2)
   const {
     data: patients = [],
     isLoading: isLoadingPatients,
-    refetch: refetchPatients
   } = useQuery<VisitorPatientSearchItem[]>({
     queryKey: ['visitor-patients-search', searchQuery],
     queryFn: () => api.searchVisitorPatients(searchQuery),
     enabled: searchQuery.trim().length >= 2,
   });
+
+  // Effective civil ID to poll passes for
+  const effectiveCivilId = profile.civilId || civilId || undefined;
 
   // 2. Fetch My Passes Query (auto-poll every 4 seconds to catch receptionist approvals live)
   const {
@@ -74,9 +125,10 @@ export const VisitorPortalPage: React.FC = () => {
     isLoading: isLoadingPasses,
     refetch: refetchPasses
   } = useQuery<VisitorPassDetail[]>({
-    queryKey: ['visitor-my-passes'],
-    queryFn: () => api.getMyVisitorPasses(),
+    queryKey: ['visitor-my-passes', effectiveCivilId],
+    queryFn: () => api.getMyVisitorPasses(effectiveCivilId),
     refetchInterval: 4000,
+    enabled: true,
   });
 
   // Update activePass reference when myPasses changes (e.g. from PENDING to ACTIVE)
@@ -93,11 +145,25 @@ export const VisitorPortalPage: React.FC = () => {
     }
   }, [myPasses, activePass]);
 
-  // 3. Book Visit Pass Mutation
-  const bookPassMutation = useMutation({
-    mutationFn: (data: { patient_id: number; visitor_type: string; relationship: string; duration_minutes: number; notes?: string }) =>
-      api.bookVisitorPass(data),
+  // 3. Frictionless Express Pass Booking Mutation (No password / registration needed!)
+  const expressBookMutation = useMutation({
+    mutationFn: (data: VisitorExpressBookRequest) => api.expressBookVisitorPass(data),
     onSuccess: (newPass) => {
+      // Remember visitor details in browser for next time
+      const saved = {
+        fullName: fullName.trim(),
+        civilId: civilId.trim(),
+        mobileNumber: mobileNumber.trim(),
+      };
+      setProfile(saved);
+      saveStoredProfile(saved);
+      setIsEditingProfile(false);
+
+      // If backend issued a guest access token, keep it for smooth auth
+      if ((newPass as any).access_token) {
+        localStorage.setItem('token', (newPass as any).access_token);
+      }
+
       setActivePass(newPass);
       setSelectedPatient(null);
       setActiveTab('PASSES');
@@ -109,7 +175,16 @@ export const VisitorPortalPage: React.FC = () => {
   const handleBookSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatient) return;
-    bookPassMutation.mutate({
+
+    if (!fullName.trim() || !civilId.trim() || !mobileNumber.trim()) {
+      alert(lang === 'ar' ? 'يرجى إكمال البيانات الأساسية (الاسم، الرقم المدني، ورقم الهاتف)' : 'Please complete all required fields (Name, Civil ID, and Mobile).');
+      return;
+    }
+
+    expressBookMutation.mutate({
+      full_name: fullName.trim(),
+      civil_id: civilId.trim(),
+      mobile_number: mobileNumber.trim(),
       patient_id: selectedPatient.id,
       visitor_type: visitorType,
       relationship: relationship,
@@ -118,24 +193,45 @@ export const VisitorPortalPage: React.FC = () => {
     });
   };
 
+  const handleLookupSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupCivilId.trim()) return;
+    setCivilId(lookupCivilId.trim());
+    setProfile((prev) => ({ ...prev, civilId: lookupCivilId.trim() }));
+    saveStoredProfile({ ...profile, civilId: lookupCivilId.trim() });
+    setShowLookupModal(false);
+    setActiveTab('PASSES');
+    queryClient.invalidateQueries({ queryKey: ['visitor-my-passes'] });
+  };
+
   const handlePrint = () => {
     window.print();
   };
 
+  const handleDownloadQR = () => {
+    if (!activePass?.qr_image_base64) return;
+    const link = document.createElement('a');
+    link.href = activePass.qr_image_base64;
+    link.download = `wesal-pass-${activePass.pass_code || activePass.visit_number}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex flex-col justify-between">
+    <div className="min-h-[100dvh] bg-slate-50 flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
       {/* Top Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
               <Shield className="w-5 h-5" />
             </div>
             <div>
               <div className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <span>WESAL | وصل</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  {lang === 'ar' ? 'بوابة الزوار الذكية' : 'Visitor Portal'}
+                  {lang === 'ar' ? 'تصريح الزائر السريع' : 'Express Pass'}
                 </span>
               </div>
               <div className="text-[11px] text-slate-500">
@@ -144,28 +240,36 @@ export const VisitorPortalPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* User Pill */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
-              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{user?.full_name || 'Visitor'}</span>
-            </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick Find Pass by Civil ID button */}
+            <button
+              onClick={() => {
+                setLookupCivilId(profile.civilId || '');
+                setShowLookupModal(true);
+              }}
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 text-slate-700 hover:text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5"
+            >
+              <Search className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">
+                {lang === 'ar' ? 'استرجاع تصريح سابق' : 'Find My Pass'}
+              </span>
+              <span className="sm:hidden">
+                {lang === 'ar' ? 'تصاريحي' : 'My Pass'}
+              </span>
+            </button>
 
             {/* Language Switch */}
             <button
               onClick={toggleLang}
-              className="px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
+              className="px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
             >
               {lang === 'ar' ? 'EN' : 'عربي'}
             </button>
 
-            {/* Logout / Switch Role */}
+            {/* Return to Gate / Switch Role */}
             <button
-              onClick={() => {
-                logout();
-                navigate('/gateway');
-              }}
-              title={lang === 'ar' ? 'تسجيل الخروج والعودة للبوابة' : 'Log out & return to gateway'}
+              onClick={() => navigate('/gateway')}
+              title={lang === 'ar' ? 'العودة للبوابة الرئيسية' : 'Return to main gateway'}
               className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
             >
               <LogOut className="w-4 h-4 rtl:rotate-180" />
@@ -176,6 +280,45 @@ export const VisitorPortalPage: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 flex-1 space-y-6">
+        {/* Welcome & Frictionless Value Proposition Banner */}
+        <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl shadow-emerald-950/20 no-print">
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 max-w-2xl space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+              <span>{lang === 'ar' ? 'خدمة الزوار المباشرة — بدون كلمة مرور أو تسجيل معقد' : 'Frictionless Express Service — No Password Required'}</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white">
+              {lang === 'ar' ? 'أهلاً بكم في بوابة زيارة المرضى المنومين' : 'Welcome to the Inpatient Visitor Pass Portal'}
+            </h1>
+            <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
+              {lang === 'ar'
+                ? 'احصل على تصريح الدخول الرقمي (QR) في 30 ثانية. ابحث عن المريض المنوم، أدخل بياناتك الأساسية وصلة القرابة، واحصل على تصريحك فورياً للدخول عبر بوابات المستشفى الذكية.'
+                : 'Issue your digital QR pass in 30 seconds. Search for an admitted patient, fill essential details and relationship, and receive your smart gate pass immediately.'}
+            </p>
+
+            {/* Returning Visitor Auto-Recognition Pill */}
+            {profile.civilId && profile.fullName && (
+              <div className="pt-2 flex flex-wrap items-center gap-2 text-xs">
+                <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-emerald-400" />
+                  <span>
+                    {lang === 'ar' ? `مرحباً بك مجدداً: ${profile.fullName}` : `Welcome back: ${profile.fullName}`}
+                  </span>
+                  <span className="font-mono text-emerald-300 text-[11px] font-bold">({profile.civilId})</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingProfile(true)}
+                  className="px-2.5 py-1 text-[11px] font-bold text-emerald-200 hover:text-white underline underline-offset-4"
+                >
+                  {lang === 'ar' ? 'تعديل بياناتي' : 'Edit details'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Navigation Tabs */}
         <div className="flex bg-slate-200/80 p-1 rounded-2xl max-w-md mx-auto sm:mx-0 text-xs font-bold no-print">
           <button
@@ -187,7 +330,7 @@ export const VisitorPortalPage: React.FC = () => {
             }`}
           >
             <Search className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{lang === 'ar' ? 'البحث عن مريض وإصدار تصريح' : 'Patient Search & Pass Booking'}</span>
+            <span>{lang === 'ar' ? 'طلب تصريح جديد' : 'New Visit Pass'}</span>
           </button>
           <button
             onClick={() => setActiveTab('PASSES')}
@@ -199,13 +342,13 @@ export const VisitorPortalPage: React.FC = () => {
           >
             <QrCode className="w-3.5 h-3.5 text-emerald-600" />
             <span>
-              {lang === 'ar' ? `تصاريحي النشطة (${myPasses.length})` : `My Active Passes (${myPasses.length})`}
+              {lang === 'ar' ? `تصاريحي النشطة (${myPasses.length})` : `My Passes (${myPasses.length})`}
             </span>
           </button>
         </div>
 
         {/* ==================================================================== */}
-        {/* TAB 1: PATIENT SEARCH & PASS BOOKING */}
+        {/* TAB 1: PATIENT SEARCH & EXPRESS PASS BOOKING */}
         {/* ==================================================================== */}
         {activeTab === 'SEARCH' && (
           <div className="space-y-6 no-print">
@@ -214,15 +357,15 @@ export const VisitorPortalPage: React.FC = () => {
               <div className="max-w-xl">
                 <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs uppercase tracking-wider mb-1">
                   <Shield className="w-4 h-4" />
-                  <span>{lang === 'ar' ? 'البحث المحمي بالخصوصية الطبية' : 'Privacy-Protected Inpatient Search'}</span>
+                  <span>{lang === 'ar' ? 'الخطوة 1: البحث المحمي بالخصوصية الطبية' : 'Step 1: Privacy-Protected Inpatient Search'}</span>
                 </div>
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900">
-                  {lang === 'ar' ? 'البحث عن مريض منوم وطلب زيارة' : 'Search Admitted Inpatient & Request Visit'}
+                  {lang === 'ar' ? 'البحث عن مريض منوم للتأكد من إمكانية الزيارة' : 'Search Inpatient to Verify Visit Status'}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                   {lang === 'ar'
-                    ? 'لحماية خصوصية المرضى وسرية بياناتهم، لا تُعرض قائمة المرضى تلقائياً. يرجى إدخال اسم المريض أو رقم الملف الطبي (MRN) للتحقق من إمكانية الزيارة.'
-                    : 'To uphold patient confidentiality, patient names are shielded. Search by patient name or Medical Record Number (MRN) to verify bedside visitation eligibility.'}
+                    ? 'لحماية خصوصية المرضى وسرية بياناتهم، لا تُعرض قائمة المرضى بالكامل. يرجى إدخال اسم المريض أو رقم الملف الطبي (MRN).'
+                    : 'To uphold patient confidentiality, full lists are masked. Search by patient name or Medical Record Number (MRN) to view bedside eligibility.'}
                 </p>
               </div>
 
@@ -254,29 +397,29 @@ export const VisitorPortalPage: React.FC = () => {
                   </h3>
                   <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
                     {lang === 'ar'
-                      ? 'وفقاً لسياسة وزارة الصحة لحماية خصوصية المرضى، ابحث مباشرة باسم المريض أو رقم ملفه للوصول إلى بيانات الزيارة وتحديد صلة القرابة.'
-                      : 'In accordance with MOH patient privacy standards, please enter at least 2 characters of the patient name or file number to view visitation status.'}
+                      ? 'وفقاً لسياسة وزارة الصحة لحماية خصوصية المرضى، اكتب حرفين على الأقل من اسم المريض أو رقم ملفه للوصول إلى بيانات الزيارة وتحديد صلة القرابة.'
+                      : 'In accordance with MOH patient privacy standards, enter at least 2 characters of the patient name or file number to view visitation status.'}
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2 pt-2 text-[11px] text-slate-600">
-                  <span className="font-semibold">{lang === 'ar' ? 'أمثلة للتجربة:' : 'Quick search demos:'}</span>
+                  <span className="font-semibold">{lang === 'ar' ? 'أمثلة سريعة للتجربة:' : 'Quick search demos:'}</span>
                   <button
                     onClick={() => setSearchQuery('P00022')}
                     className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-mono text-emerald-800 font-bold"
                   >
-                    P00022 (مسموح)
+                    P00022 ({lang === 'ar' ? 'مسموح فوري' : 'Instant Allowed'})
                   </button>
                   <button
                     onClick={() => setSearchQuery('P00021')}
                     className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-mono text-amber-800 font-bold"
                   >
-                    P00021 (مشروط)
+                    P00021 ({lang === 'ar' ? 'مشروط بموافقة' : 'Requires Approval'})
                   </button>
                   <button
                     onClick={() => setSearchQuery('P00051')}
                     className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-mono text-rose-800 font-bold"
                   >
-                    P00051 (ممنوع)
+                    P00051 ({lang === 'ar' ? 'ممنوع طبياً' : 'Prohibited'})
                   </button>
                 </div>
               </div>
@@ -342,7 +485,7 @@ export const VisitorPortalPage: React.FC = () => {
                               {/* Category Status Pill */}
                               {isProhibited ? (
                                 <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 shrink-0">
-                                  <ShieldAlert className="w-3 h-3 text-rose-600" />
+                                <ShieldAlert className="w-3 h-3 text-rose-600" />
                                   <span>{lang === 'ar' ? 'ممنوع الزيارة' : 'Prohibited'}</span>
                                 </span>
                               ) : isLimited ? (
@@ -358,7 +501,7 @@ export const VisitorPortalPage: React.FC = () => {
                               ) : (
                                 <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0">
                                   <Check className="w-3 h-3 text-emerald-600" />
-                                  <span>{lang === 'ar' ? 'مسموح الزيارة' : 'Allowed'}</span>
+                                  <span>{lang === 'ar' ? 'مسموح فوري' : 'Allowed'}</span>
                                 </span>
                               )}
                             </div>
@@ -414,7 +557,15 @@ export const VisitorPortalPage: React.FC = () => {
                             <button
                               type="button"
                               disabled={isProhibited || isFull}
-                              onClick={() => !isProhibited && !isFull && setSelectedPatient(p)}
+                              onClick={() => {
+                                if (!isProhibited && !isFull) {
+                                  setSelectedPatient(p);
+                                  // Scroll to form smoothly
+                                  setTimeout(() => {
+                                    document.getElementById('booking-form-section')?.scrollIntoView({ behavior: 'smooth' });
+                                  }, 100);
+                                }
+                              }}
                               className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
                                 isProhibited
                                   ? 'bg-rose-50 text-rose-400 cursor-not-allowed border border-rose-200'
@@ -456,14 +607,17 @@ export const VisitorPortalPage: React.FC = () => {
               </div>
             )}
 
-            {/* Step 2: Visit Token Booking Modal / Drawer */}
+            {/* Step 2: Frictionless Express Booking Form */}
             {selectedPatient && (
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-emerald-500 shadow-xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
+              <div
+                id="booking-form-section"
+                className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-emerald-500 shadow-xl space-y-6 animate-in fade-in slide-in-from-bottom-4"
+              >
                 <div className="flex items-start justify-between border-b border-slate-100 pb-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wider">
-                        {lang === 'ar' ? 'الخطوة 2: تحديد صلة القرابة وتوقيت الزيارة' : 'Step 2: Relationship & Visit Timing'}
+                        {lang === 'ar' ? 'الخطوة 2: بيانات الزائر وصلة القرابة' : 'Step 2: Visitor Details & Relationship'}
                       </span>
                       {selectedPatient.visitation_category === 'LIMITED' && (
                         <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
@@ -493,14 +647,14 @@ export const VisitorPortalPage: React.FC = () => {
                   </button>
                 </div>
 
-                {bookPassMutation.isError && (
+                {expressBookMutation.isError && (
                   <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                    <span>{(bookPassMutation.error as any)?.message || 'Failed to book pass'}</span>
+                    <span>{(expressBookMutation.error as any)?.message || 'Failed to issue pass'}</span>
                   </div>
                 )}
 
-                <form onSubmit={handleBookSubmit} className="space-y-5">
+                <form onSubmit={handleBookSubmit} className="space-y-6">
                   {/* Category Notice Banner */}
                   {selectedPatient.visitation_category === 'LIMITED' ? (
                     <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3">
@@ -509,8 +663,8 @@ export const VisitorPortalPage: React.FC = () => {
                         <div className="font-bold">{lang === 'ar' ? 'طلب مشروط بموافقة موظف الاستقبال:' : 'Subject to Receptionist Approval:'}</div>
                         <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
                           {lang === 'ar'
-                            ? 'نظراً للطبيعة الطبية لهذا الجناح، سيتم إرسال طلبك فوراً لمكتب الاستقبال للاعتماد. بعد الموافقة، سيظهر رمز الـ QR مباشرة في تصاريحك.'
-                            : 'Due to unit clinical policies, your visit request will be submitted to the reception desk for authorization before the QR pass is activated.'}
+                            ? 'نظراً للطبيعة الطبية لهذا الجناح، سيتم إرسال طلبك فوراً لمكتب الاستقبال للاعتماد. بعد الموافقة، سيظهر رمز الـ QR مباشرة في تصاريحك دون الحاجة لمراجعة مكتب التسجيل يدوياً.'
+                            : 'Due to unit clinical policies, your visit request will be submitted to the reception desk for authorization. Once accepted, your QR pass activates automatically.'}
                         </p>
                       </div>
                     </div>
@@ -521,14 +675,89 @@ export const VisitorPortalPage: React.FC = () => {
                         <div className="font-bold">{lang === 'ar' ? 'قبول فوري ومباشر:' : 'Instant Auto-Approval:'}</div>
                         <p className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
                           {lang === 'ar'
-                            ? 'الجناح الطبي متاح حالياً للزيارة وسعة السرير شاغرة. سيتم توليد رمز الـ QR وتفعيله فورياً بمجرد تأكيد الطلب.'
-                            : 'This ward is currently open and bedside capacity is available. A digital QR pass will be issued immediately.'}
+                            ? 'الجناح الطبي متاح حالياً للزيارة وسعة السرير شاغرة. سيتم توليد رمز الـ QR وتفعيله فورياً بمجرد إرسال هذا الطلب.'
+                            : 'This ward is currently open and bedside capacity is available. A digital QR pass will be issued immediately upon confirmation.'}
                         </p>
                       </div>
                     </div>
                   )}
 
-                  {/* 1. Relationship Clarification Selector (Mandatory Requirement) */}
+                  {/* Section A: Essential Visitor Identification (No username/password needed) */}
+                  <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                        <UserCheck className="w-4 h-4 text-emerald-600" />
+                        <span>{lang === 'ar' ? 'بيانات الزائر الأساسية (للتحقق الأمني فقط)' : 'Essential Visitor Information'}</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold border border-emerald-100">
+                        {lang === 'ar' ? 'بدون كلمة مرور' : 'Passwordless'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          {lang === 'ar' ? 'الاسم الكامل الثلاثي *' : 'Full Name *'}
+                        </label>
+                        <div className="relative">
+                          <User className="w-3.5 h-3.5 absolute left-3 rtl:left-auto rtl:right-3 top-3 text-slate-400" />
+                          <input
+                            type="text"
+                            required
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            placeholder={lang === 'ar' ? 'مثال: ناصر بن سعيد المشيخي' : 'e.g. Salim Al-Shanfari'}
+                            className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-0 bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          {lang === 'ar' ? 'الرقم المدني أو الإقامة *' : 'Civil ID / Resident ID *'}
+                        </label>
+                        <div className="relative">
+                          <CreditCard className="w-3.5 h-3.5 absolute left-3 rtl:left-auto rtl:right-3 top-3 text-slate-400" />
+                          <input
+                            type="text"
+                            required
+                            value={civilId}
+                            onChange={(e) => setCivilId(e.target.value)}
+                            placeholder={lang === 'ar' ? 'مثال: 102938475' : 'e.g. 102938475'}
+                            className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-xs font-mono rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-0 bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          {lang === 'ar' ? 'رقم الهاتف للتواصل *' : 'Mobile Phone *'}
+                        </label>
+                        <div className="relative">
+                          <Phone className="w-3.5 h-3.5 absolute left-3 rtl:left-auto rtl:right-3 top-3 text-slate-400" />
+                          <input
+                            type="tel"
+                            required
+                            value={mobileNumber}
+                            onChange={(e) => setMobileNumber(e.target.value)}
+                            placeholder={lang === 'ar' ? 'مثال: 96891234567' : 'e.g. 96891234567'}
+                            className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-xs font-mono rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-0 bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 pt-1">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>
+                        {lang === 'ar'
+                          ? 'سيتم حفظ بياناتك في هذا المتصفح لتسهيل زياراتك القادمة بنقرة واحدة.'
+                          : 'Your details will be remembered locally for fast 1-click visits in the future.'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Section B: Relationship Clarification Selector (Mandatory Requirement) */}
                   <div>
                     <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
@@ -561,6 +790,7 @@ export const VisitorPortalPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Section C: Pass Type & Duration */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Visitor Type */}
                     <div>
@@ -602,7 +832,7 @@ export const VisitorPortalPage: React.FC = () => {
                       </label>
                       <div className="grid grid-cols-4 gap-2">
                         {[
-                          { val: 2, label: lang === 'ar' ? '2 دقيقة (تجريبي)' : '2 Min (Demo)' },
+                          { val: 2, label: lang === 'ar' ? '2 د (تجريبي)' : '2m Demo' },
                           { val: 20, label: lang === 'ar' ? '20 دقيقة' : '20 Mins' },
                           { val: 45, label: lang === 'ar' ? '45 دقيقة' : '45 Mins' },
                           { val: 60, label: lang === 'ar' ? '60 دقيقة' : '60 Mins' },
@@ -624,6 +854,20 @@ export const VisitorPortalPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Section D: Optional Notes */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {lang === 'ar' ? 'ملاحظات إضافية لمكتب الاستقبال (اختياري)' : 'Additional Notes (Optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={bookingNotes}
+                      onChange={(e) => setBookingNotes(e.target.value)}
+                      placeholder={lang === 'ar' ? 'مثال: إحضار مستندات أو مقتنيات شخصية للمريض...' : 'e.g. Delivering personal belongings...'}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-0"
+                    />
+                  </div>
+
                   {/* Submit Button */}
                   <div className="flex justify-end gap-3 pt-2">
                     <button
@@ -635,14 +879,14 @@ export const VisitorPortalPage: React.FC = () => {
                     </button>
                     <button
                       type="submit"
-                      disabled={bookPassMutation.isPending}
+                      disabled={expressBookMutation.isPending}
                       className={`px-6 py-2.5 rounded-xl text-white font-bold text-xs shadow-md flex items-center gap-2 ${
                         selectedPatient.visitation_category === 'LIMITED'
                           ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30'
                           : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
                       }`}
                     >
-                      {bookPassMutation.isPending ? (
+                      {expressBookMutation.isPending ? (
                         <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : selectedPatient.visitation_category === 'LIMITED' ? (
                         <>
@@ -652,7 +896,7 @@ export const VisitorPortalPage: React.FC = () => {
                       ) : (
                         <>
                           <QrCode className="w-4 h-4" />
-                          <span>{lang === 'ar' ? 'توليد وتفعيل التصريح فورياً' : 'Generate & Activate Pass'}</span>
+                          <span>{lang === 'ar' ? 'توليد وتفعيل التصريح فورياً (QR)' : 'Generate & Activate Pass (QR)'}</span>
                         </>
                       )}
                     </button>
@@ -669,22 +913,37 @@ export const VisitorPortalPage: React.FC = () => {
         {activeTab === 'PASSES' && (
           <div className="space-y-6">
             {myPasses.length === 0 ? (
-              <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 text-slate-500 space-y-3 max-w-md mx-auto">
-                <QrCode className="w-12 h-12 text-slate-300 mx-auto" />
-                <h3 className="font-bold text-slate-800 text-base">
-                  {lang === 'ar' ? 'لا يوجد لديك تصاريح زيارة مسجلة' : 'No Visit Passes Found'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {lang === 'ar'
-                    ? 'يمكنك البحث عن المريض بالاسم أو رقم الملف وإرسال طلب زيارة'
-                    : 'Search for an admitted patient by MRN or name to submit a visit request.'}
-                </p>
-                <button
-                  onClick={() => setActiveTab('SEARCH')}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700"
-                >
-                  {lang === 'ar' ? 'البحث عن مريض الآن' : 'Search Patient Now'}
-                </button>
+              <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 text-slate-500 space-y-4 max-w-md mx-auto shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                  <QrCode className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-slate-800 text-base">
+                    {lang === 'ar' ? 'لا يوجد لديك تصاريح زيارة مسجلة' : 'No Visit Passes Found'}
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {lang === 'ar'
+                      ? 'يمكنك البحث عن المريض بالاسم أو رقم الملف وإصدار تصريحك فورياً بدون كلمة مرور.'
+                      : 'Search for an admitted patient by MRN or name to issue your instant pass.'}
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-col sm:flex-row justify-center gap-2">
+                  <button
+                    onClick={() => setActiveTab('SEARCH')}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 shadow-md shadow-emerald-600/20"
+                  >
+                    {lang === 'ar' ? 'طلب تصريح جديد الآن' : 'Request New Pass Now'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLookupCivilId(profile.civilId || '');
+                      setShowLookupModal(true);
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50"
+                  >
+                    {lang === 'ar' ? 'استرجاع بالرقم المدني' : 'Lookup by Civil ID'}
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -694,8 +953,9 @@ export const VisitorPortalPage: React.FC = () => {
                     <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       {lang === 'ar' ? 'سجل طلبات وتصاريح الزيارة' : 'Visit Requests & Passes'}
                     </h3>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {lang === 'ar' ? 'تحديث تلقائي' : 'Live Polling'}
+                    <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin text-emerald-600" />
+                      <span>{lang === 'ar' ? 'تحديث حي' : 'Live Polling'}</span>
                     </span>
                   </div>
 
@@ -781,7 +1041,7 @@ export const VisitorPortalPage: React.FC = () => {
                           </h3>
                           <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
                             {lang === 'ar'
-                              ? 'تم استلام طلبك وهو معروض حالياً على شاشة الاستقبال للتأكيد والموافقة. سيتحول هذا الكرت إلى رمز QR فورياً بمجرد الاعتماد.'
+                              ? 'تم استلام طلبك وهو معروض حالياً على شاشة الاستقبال للاعتماد. سيتحول هذا الكرت إلى رمز QR فورياً بمجرد الموافقة دون الحاجة لتحديث الصفحة.'
                               : 'Your visit request is in the reception approval queue. Once accepted, this card will automatically activate with a scannable QR pass.'}
                           </p>
                         </div>
@@ -843,13 +1103,23 @@ export const VisitorPortalPage: React.FC = () => {
                           <span className="text-xs font-bold text-slate-700">
                             {lang === 'ar' ? 'البطاقة الرقمية الرسمية' : 'Digital Scannable Badge'}
                           </span>
-                          <button
-                            onClick={handlePrint}
-                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                            <span>{lang === 'ar' ? 'طباعة التصريح' : 'Print Badge'}</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleDownloadQR}
+                              className="px-2.5 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-sm"
+                              title={lang === 'ar' ? 'حفظ صورة الرمز' : 'Save QR image'}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">{lang === 'ar' ? 'حفظ الرمز' : 'Save'}</span>
+                            </button>
+                            <button
+                              onClick={handlePrint}
+                              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>{lang === 'ar' ? 'طباعة' : 'Print'}</span>
+                            </button>
+                          </div>
                         </div>
 
                         {/* The Visual Badge Container */}
@@ -917,7 +1187,7 @@ export const VisitorPortalPage: React.FC = () => {
                             <div className="flex justify-between pt-1">
                               <span className="text-slate-500 font-medium">{lang === 'ar' ? 'الموقع والمبنى:' : 'Destination:'}</span>
                               <span className="font-semibold text-slate-800">
-                                {getLocalizedWard(activePass.ward_name, lang)} &bull; Room {activePass.room_number} ({activePass.bed})
+                                {getLocalizedWard(activePass.ward_name, lang)} &bull; {activePass.room_number} ({activePass.bed})
                               </span>
                             </div>
                             <div className="flex justify-between pt-1">
@@ -929,6 +1199,21 @@ export const VisitorPortalPage: React.FC = () => {
                             <div className="flex justify-between pt-1">
                               <span className="text-slate-500 font-medium">{lang === 'ar' ? 'حالة الاعتماد:' : 'Approval Status:'}</span>
                               <span className="font-bold text-emerald-700">🟢 {lang === 'ar' ? 'معتمد ونشط' : 'Approved & Active'}</span>
+                            </div>
+                          </div>
+
+                          {/* Directions to Turnstiles & Elevators */}
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-[11px] text-slate-700 flex items-start gap-2">
+                            <Compass className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-bold text-emerald-900">
+                                {lang === 'ar' ? 'توجيهات الدخول: ' : 'Entry Point: '}
+                              </span>
+                              <span>
+                                {lang === 'ar'
+                                  ? 'توجه إلى بوابة CP-01 (البوابة الرئيسية / المصاعد)، وامسح الرمز أمام القارئ الضوئي لفتح البوابة الذكية.'
+                                  : 'Proceed to Checkpoint CP-01 (Main Turnstiles). Scan this QR code facing the optical reader to open the barrier.'}
+                              </span>
                             </div>
                           </div>
 
@@ -948,6 +1233,66 @@ export const VisitorPortalPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Lookup Pass by Civil ID Modal */}
+      {showLookupModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-emerald-600" />
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {lang === 'ar' ? 'استرجاع تصاريحي بالرقم المدني' : 'Find My Passes by Civil ID'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowLookupModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              {lang === 'ar'
+                ? 'إذا قمت بإصدار تصريح سابق وتريد استعراض رمز الـ QR أو متابعة موافقة الاستقبال، أدخل رقمك المدني هنا:'
+                : 'Enter your Civil ID / Resident ID to look up your existing or pending QR passes:'}
+            </p>
+
+            <form onSubmit={handleLookupSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  {lang === 'ar' ? 'الرقم المدني أو الإقامة' : 'Civil ID / Resident ID'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={lookupCivilId}
+                  onChange={(e) => setLookupCivilId(e.target.value)}
+                  placeholder="e.g. 102938475"
+                  className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-0"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLookupModal(false)}
+                  className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20"
+                >
+                  {lang === 'ar' ? 'استرجاع التصاريح' : 'Lookup Passes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-3 text-center text-xs text-slate-400 no-print">

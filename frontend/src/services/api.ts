@@ -3,7 +3,7 @@ import {
   Visit, VisitorPass, ScanResult, DashboardData, NotificationItem,
   PolicySettings, TodayReport, WardReportItem, DenialReportItem,
   CurrentLiveReport, AuditLogItem,
-  VisitorPatientSearchItem, VisitorPassBookRequest, VisitorPassDetail, VisitorRegisterRequest,
+  VisitorPatientSearchItem, VisitorPassBookRequest, VisitorExpressBookRequest, VisitorPassDetail, VisitorRegisterRequest,
   PendingVisitRequest
 } from '../types';
 
@@ -169,8 +169,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getMyVisitorPasses: () =>
-    request<VisitorPassDetail[]>('/visitor/my-passes'),
+  expressBookVisitorPass: (data: VisitorExpressBookRequest) =>
+    request<VisitorPassDetail>('/visitor/passes/express-book', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getMyVisitorPasses: (civilId?: string, mobile?: string) => {
+    const params = new URLSearchParams();
+    if (civilId) params.append('civil_id', civilId);
+    if (mobile) params.append('mobile', mobile);
+    return request<VisitorPassDetail[]>(`/visitor/my-passes?${params.toString()}`);
+  },
   getPendingVisitRequests: () =>
     request<PendingVisitRequest[]>('/visitor/pending-requests'),
   approveVisitRequest: (visitId: number) =>

@@ -88,18 +88,10 @@ export const App: React.FC = () => {
               {/* Step 3A: Staff Authentication */}
               <Route path="/login" element={<LoginPage />} />
 
-              {/* Step 3B: Visitor Authentication */}
-              <Route path="/visitor-auth" element={<VisitorAuthPage />} />
-
-              {/* Tier 2: Visitor Self-Service Portal */}
-              <Route
-                path="/visitor"
-                element={
-                  <VisitorRoute>
-                    <VisitorPortalPage />
-                  </VisitorRoute>
-                }
-              />
+              {/* Step 3B: Frictionless Visitor Express Portal (No password required) */}
+              <Route path="/visitor" element={<VisitorPortalPage />} />
+              <Route path="/visitor-portal" element={<VisitorPortalPage />} />
+              <Route path="/visitor-auth" element={<Navigate to="/visitor-portal" replace />} />
 
               {/* Tier 1: Hospital Staff Console (Full CRUD & Access Operations) */}
               <Route

@@ -16,6 +16,7 @@ from app.schemas.visitor_portal import (
     VisitorRegisterRequest,
     VisitorPatientSearchItem,
     VisitorPassBookRequest,
+    VisitorExpressBookRequest,
     VisitorPassDetail
 )
 from app.services.qr_service import generate_secure_token, generate_pass_code, generate_visit_number, generate_qr_base64
@@ -39,6 +40,18 @@ def get_current_visitor_user(token: str = Depends(oauth2_scheme), db: Session = 
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     
     return user
+
+def get_current_visitor_user_optional(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> Optional[User]:
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        username: str = payload.get("sub")
+        if not username:
+            return None
+        return db.query(User).filter(User.username == username).first()
+    except Exception:
+        return None
 
 ARABIC_PATIENT_NAMES = {
     "Ahmed Mohammed Al-Hakim": "أحمد محمد الحكيم",
@@ -439,12 +452,256 @@ async def book_visitor_pass(
         generated_at=new_pass.generated_at
     )
 
-@router.get("/my-passes", response_model=List[VisitorPassDetail])
-def get_my_visitor_passes(
-    current_user: User = Depends(get_current_visitor_user),
+@router.post("/passes/express-book", response_model=VisitorPassDetail)
+async def express_book_visitor_pass(
+    req: VisitorExpressBookRequest,
     db: Session = Depends(get_db)
 ):
-    visitor = db.query(Visitor).filter(Visitor.full_name == current_user.full_name).first()
+    """
+    Frictionless Visitor Self-Service Pass Issuance:
+    No username or password required! Visitor enters their full name, Civil ID,
+    mobile number, selected patient, and relationship.
+    """
+    full_name = req.full_name.strip()
+    civil_id = req.civil_id.strip()
+    mobile_number = req.mobile_number.strip()
+
+    if not full_name or not civil_id or not mobile_number:
+        raise HTTPException(
+            status_code=400,
+            detail="يرجى إدخال الاسم الكامل، الرقم المدني، ورقم الهاتف."
+        )
+
+    # 1. Find or create Visitor entity by Civil ID
+    visitor = db.query(Visitor).filter(Visitor.civil_id == civil_id).first()
+    if not visitor:
+        visitor = Visitor(
+            full_name=full_name,
+            civil_id=civil_id,
+            mobile_number=mobile_number,
+            visitor_type=req.visitor_type or "VISITOR",
+            created_at=datetime.utcnow()
+        )
+        db.add(visitor)
+        db.commit()
+        db.refresh(visitor)
+    else:
+        # Update name and mobile if changed
+        if full_name and visitor.full_name != full_name:
+            visitor.full_name = full_name
+        if mobile_number and visitor.mobile_number != mobile_number:
+            visitor.mobile_number = mobile_number
+        db.commit()
+
+    # 2. Maintain guest user account for system audit / JWT consistency
+    guest_username = f"vis_{civil_id.replace(' ', '_').lower()}"
+    guest_user = db.query(User).filter(User.username == guest_username).first()
+    if not guest_user:
+        guest_user = User(
+            username=guest_username,
+            hashed_password=get_password_hash("express_guest_2026"),
+            full_name=full_name,
+            role="VISITOR",
+            is_active=True
+        )
+        db.add(guest_user)
+        db.commit()
+        db.refresh(guest_user)
+
+    session_token = create_access_token(
+        subject=guest_user.username,
+        role="VISITOR",
+        expires_delta=timedelta(days=7)
+    )
+
+    # 3. Validate Patient
+    patient = db.query(Patient).filter(Patient.id == req.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="المريض غير مسجل في قائمة التنويم.")
+
+    if patient.admission_status != "ADMITTED":
+        raise HTTPException(status_code=400, detail="المريض ليس في حالة تنويم حالياً.")
+
+    # 4. Check Category (ALLOWED, LIMITED, PROHIBITED)
+    category = getattr(patient, "visitation_category", "ALLOWED") or "ALLOWED"
+    if category == "PROHIBITED":
+        raise HTTPException(
+            status_code=403,
+            detail="الزيارة محظورة طبياً لهذا المريض حالياً حفاظاً على سلامته."
+        )
+
+    # 5. Check if visitor already has an active pass for this patient
+    existing_active = db.query(Visit).filter(
+        Visit.patient_id == patient.id,
+        Visit.visitor_id == visitor.id,
+        Visit.status.in_(["ACTIVE", "REGISTERED", "PENDING_APPROVAL"])
+    ).first()
+
+    if existing_active and existing_active.pass_obj:
+        p = existing_active.pass_obj
+        return VisitorPassDetail(
+            visit_id=existing_active.id,
+            visit_number=existing_active.visit_number,
+            pass_code=p.pass_code,
+            secure_token=p.secure_token,
+            qr_payload=p.qr_payload,
+            qr_image_base64=p.qr_image_base64,
+            visitor_name=visitor.full_name,
+            visitor_civil_id=visitor.civil_id,
+            visitor_mobile=visitor.mobile_number,
+            visitor_type=visitor.visitor_type,
+            relationship=existing_active.visitor_relationship or req.relationship,
+            patient_name=patient.full_name,
+            patient_hospital_number=patient.hospital_number,
+            ward_name=patient.ward.name if patient.ward else "General Ward",
+            room_number=patient.room.room_number if patient.room else "N/A",
+            bed=patient.bed or "B1",
+            valid_from=existing_active.valid_from,
+            valid_until=existing_active.valid_until,
+            max_duration_minutes=existing_active.max_duration_minutes,
+            status=existing_active.status,
+            approval_status="APPROVED" if existing_active.status != "PENDING_APPROVAL" else "PENDING_APPROVAL",
+            rejection_reason=existing_active.rejection_reason,
+            generated_at=p.generated_at,
+            access_token=session_token
+        )
+
+    # 6. Check Bedside Concurrent Visitors Limit
+    concurrent_count = db.query(Visit).filter(
+        Visit.patient_id == patient.id,
+        Visit.status.in_(["ACTIVE", "ENDING_SOON", "OVERDUE"])
+    ).count()
+
+    if concurrent_count >= patient.max_concurrent_visitors:
+        raise HTTPException(
+            status_code=400,
+            detail=f"غرفة المريض مكتملة السعة الاستيعابية حالياً ({concurrent_count}/{patient.max_concurrent_visitors} زائر). يرجى المحاولة بعد قليل."
+        )
+
+    # 7. Multi-Category Approval Logic
+    is_auto_approved = (
+        category == "ALLOWED" and
+        req.relationship in ["FIRST_DEGREE", "SECOND_DEGREE", "COMPANION"]
+    )
+    visit_status = "REGISTERED" if is_auto_approved else "PENDING_APPROVAL"
+    pass_status = "ACTIVE" if is_auto_approved else "PENDING"
+    approval_status = "APPROVED" if is_auto_approved else "PENDING_APPROVAL"
+
+    now = datetime.utcnow()
+    duration = req.duration_minutes if req.duration_minutes > 0 else 20
+    valid_until = now + timedelta(hours=4)
+
+    visit_number = generate_visit_number()
+    new_visit = Visit(
+        visit_number=visit_number,
+        patient_id=patient.id,
+        visitor_id=visitor.id,
+        ward_id=patient.ward_id,
+        service_type="VISITOR_EXPRESS",
+        status=visit_status,
+        visitor_relationship=req.relationship,
+        registered_at=now,
+        valid_from=now,
+        valid_until=valid_until,
+        max_duration_minutes=duration
+    )
+    db.add(new_visit)
+    db.commit()
+    db.refresh(new_visit)
+
+    pass_code = generate_pass_code()
+    secure_token = generate_secure_token()
+    qr_payload = secure_token
+    qr_image_base64 = generate_qr_base64(qr_payload)
+
+    new_pass = VisitorPass(
+        visit_id=new_visit.id,
+        pass_code=pass_code,
+        secure_token=secure_token,
+        qr_payload=qr_payload,
+        qr_image_base64=qr_image_base64,
+        status=pass_status,
+        generated_at=now
+    )
+    db.add(new_pass)
+    db.commit()
+    db.refresh(new_pass)
+
+    log_audit(
+        db=db,
+        action="EXPRESS_VISITOR_PASS_REQUESTED",
+        user_id=guest_user.id,
+        username=guest_user.username,
+        entity_type="VISIT",
+        entity_id=str(new_visit.id),
+        details={
+            "visit_number": visit_number,
+            "pass_code": pass_code,
+            "status": visit_status,
+            "relationship": req.relationship,
+            "category": category,
+            "civil_id": civil_id
+        }
+    )
+
+    await ws_manager.broadcast({
+        "type": "VISIT_REQUEST_SUBMITTED",
+        "visit_id": new_visit.id,
+        "visit_number": visit_number,
+        "visitor_name": visitor.full_name,
+        "visitor_civil_id": visitor.civil_id,
+        "patient_hospital_number": patient.hospital_number,
+        "ward_name": patient.ward.name if patient.ward else "Ward",
+        "status": visit_status
+    })
+
+    return VisitorPassDetail(
+        visit_id=new_visit.id,
+        visit_number=new_visit.visit_number,
+        pass_code=new_pass.pass_code,
+        secure_token=new_pass.secure_token,
+        qr_payload=new_pass.qr_payload,
+        qr_image_base64=new_pass.qr_image_base64,
+        visitor_name=visitor.full_name,
+        visitor_civil_id=visitor.civil_id,
+        visitor_mobile=visitor.mobile_number,
+        visitor_type=visitor.visitor_type,
+        relationship=new_visit.visitor_relationship,
+        patient_name=patient.full_name,
+        patient_hospital_number=patient.hospital_number,
+        ward_name=patient.ward.name if patient.ward else "General Ward",
+        room_number=patient.room.room_number if patient.room else "N/A",
+        bed=patient.bed or "B1",
+        valid_from=new_visit.valid_from,
+        valid_until=new_visit.valid_until,
+        max_duration_minutes=new_visit.max_duration_minutes,
+        status=new_visit.status,
+        approval_status=approval_status,
+        rejection_reason=new_visit.rejection_reason,
+        generated_at=new_pass.generated_at,
+        access_token=session_token
+    )
+
+@router.get("/my-passes", response_model=List[VisitorPassDetail])
+def get_my_visitor_passes(
+    civil_id: Optional[str] = Query(None),
+    mobile: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_visitor_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Look up passes by either:
+    1. Authenticated session token, OR
+    2. Passwordless lookup using Civil ID or Mobile Number.
+    """
+    visitor = None
+    if civil_id:
+        visitor = db.query(Visitor).filter(Visitor.civil_id == civil_id.strip()).order_by(Visitor.id.desc()).first()
+    elif mobile:
+        visitor = db.query(Visitor).filter(Visitor.mobile_number == mobile.strip()).order_by(Visitor.id.desc()).first()
+    elif current_user:
+        visitor = db.query(Visitor).filter(Visitor.full_name == current_user.full_name).first()
+
     if not visitor:
         return []
 

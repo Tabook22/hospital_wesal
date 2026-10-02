@@ -34,6 +34,16 @@ class VisitorPassBookRequest(BaseModel):
     duration_minutes: int = 20
     notes: Optional[str] = None
 
+class VisitorExpressBookRequest(BaseModel):
+    patient_id: int
+    full_name: str = Field(..., min_length=2, max_length=100)
+    civil_id: str = Field(..., min_length=4, max_length=30)
+    mobile_number: str = Field(..., min_length=6, max_length=25)
+    visitor_type: str = "VISITOR"  # VISITOR or COMPANION
+    relationship: str = "FIRST_DEGREE"  # FIRST_DEGREE, SECOND_DEGREE, EXTENDED_FAMILY, FRIEND, COMPANION
+    duration_minutes: int = 20
+    notes: Optional[str] = None
+
 class VisitorPassDetail(BaseModel):
     visit_id: int
     visit_number: str
@@ -58,4 +68,5 @@ class VisitorPassDetail(BaseModel):
     approval_status: str = "APPROVED"  # APPROVED, PENDING_APPROVAL, REJECTED
     rejection_reason: Optional[str] = None
     generated_at: datetime
+    access_token: Optional[str] = None
 

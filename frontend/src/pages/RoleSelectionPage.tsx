@@ -113,8 +113,8 @@ export const RoleSelectionPage: React.FC = () => {
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
                   <Users className="w-7 h-7" />
                 </div>
-                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700">
-                  {lang === 'ar' ? 'المستوى 2: خدمة ذاتية' : 'Tier 2: Self-Service'}
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                  {lang === 'ar' ? 'تصريح فوري مباشر (بدون كلمة مرور)' : 'Instant Pass (No Password)'}
                 </span>
               </div>
 
@@ -124,35 +124,35 @@ export const RoleSelectionPage: React.FC = () => {
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   {lang === 'ar'
-                    ? 'لعائلات المرضى، الأقارب، والمرافقين الراغبين بزيارة مريض منوم'
-                    : 'For patients’ families, friends, and verified inpatient companions.'}
+                    ? 'لعائلات المرضى، الأقارب، والمرافقين — احصل على تصريحك برقمك المدني خلال ثوانٍ'
+                    : 'For patients’ families, friends, and companions — get your digital pass in seconds.'}
                 </p>
               </div>
 
               <div className="space-y-2.5 pt-2 border-t border-slate-100 text-xs text-slate-600">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>{lang === 'ar' ? 'البحث عن المريض ومعرفة الجناح والغرفة' : 'Read-Only Patient Search & Location'}</span>
+                  <span>{lang === 'ar' ? 'دخول مباشر وسريع بدون إنشاء حساب أو كلمة سر' : 'Frictionless entry — No username or password'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>{lang === 'ar' ? 'التحقق الفوري من سعة السرير ومواعيد الزيارة' : 'Instant Bedside Vacancy & Visiting Hours'}</span>
+                  <span>{lang === 'ar' ? 'البحث عن المريض والتحقق من مواعيد وسعة السرير' : 'Search patient & check real-time bed capacity'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>{lang === 'ar' ? 'إصدار تصريح زيارة رقمي برمز QR ذكي' : 'Generate Digital Visit Token / QR Pass'}</span>
+                  <span>{lang === 'ar' ? 'إصدار تصريح زيارة رقمي برمز QR فوري للبوابات' : 'Instant Optical QR Pass for Smart Turnstiles'}</span>
                 </div>
               </div>
             </div>
 
             <div className="pt-8">
               <button
-                onClick={() => navigate('/visitor-auth')}
-                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all"
+                onClick={() => navigate('/visitor-portal')}
+                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all group"
               >
                 <QrCode className="w-4 h-4" />
-                <span>{lang === 'ar' ? 'دخول بوابة الزوار (تسجيل / دخول)' : 'Enter Visitor Portal (Login/Register)'}</span>
-                <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                <span>{lang === 'ar' ? 'إصدار تصريح زيارة سريع الآن' : 'Issue Express Visit Pass Now'}</span>
+                <ArrowRight className="w-4 h-4 rtl:rotate-180 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
