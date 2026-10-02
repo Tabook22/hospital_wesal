@@ -12,7 +12,8 @@ from app.schemas.incident import (
     StaffIncidentResponse,
     IncidentStats,
 )
-from app.services.audit_service import log_audit_event
+from app.services.audit_service import log_audit
+
 from app.api.v1.ws import ws_manager
 
 router = APIRouter(prefix="/incidents", tags=["Staff Incidents & Messaging"])
@@ -119,13 +120,21 @@ async def create_incident(
     db.refresh(incident)
 
     # Audit logging
-    log_audit_event(
+    log_audit(
         db=db,
         action="INCIDENT_REPORTED",
-        description=f"Staff {payload.reporter_name} ({payload.reporter_role}) reported {payload.severity} incident in {payload.ward_name}: {payload.title}",
-        user_name=payload.reporter_name,
-        user_role=payload.reporter_role
+        username=payload.reporter_name,
+        entity_type="INCIDENT",
+        entity_id=str(incident.id),
+        details={
+            "incident_number": incident.incident_number,
+            "category": payload.category,
+            "severity": payload.severity,
+            "ward": payload.ward_name,
+            "title": payload.title,
+        }
     )
+
 
     # Real-time WebSocket Broadcast to all active consoles (Admin, Reception, Security)
     await ws_manager.broadcast({
@@ -174,13 +183,19 @@ async def update_incident_status(
     db.refresh(incident)
 
     # Audit logging
-    log_audit_event(
+    log_audit(
         db=db,
         action=f"INCIDENT_{new_status}",
-        description=f"Incident {incident.incident_number} updated to {new_status} by {payload.resolved_by or 'Admin'}. Notes: {payload.admin_notes or 'None'}",
-        user_name=payload.resolved_by or "Hospital Admin",
-        user_role="ADMIN"
+        username=payload.resolved_by or "Hospital Admin",
+        entity_type="INCIDENT",
+        entity_id=str(incident.id),
+        details={
+            "incident_number": incident.incident_number,
+            "new_status": new_status,
+            "admin_notes": payload.admin_notes,
+        }
     )
+
 
     # Broadcast update live
     await ws_manager.broadcast({

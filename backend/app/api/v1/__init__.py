@@ -11,8 +11,11 @@ from app.api.v1.alerts import router as alerts_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.audit import router as audit_router
+from app.api.v1.ws import router as ws_router
 from app.api.v1.visitor_portal import router as visitor_router
 from app.api.v1.incidents import router as incidents_router
+
+
 
 api_router = APIRouter()
 
