@@ -69,27 +69,27 @@ export const RoleSelectionPage: React.FC = () => {
 
               <div>
                 <h3 className="text-xl font-bold text-slate-900">
-                  {lang === 'ar' ? 'موظفو المستشفى (إدارة / استقبال)' : 'Hospital Staff (Admin / Reception)'}
+                  {lang === 'ar' ? 'موظفو المستشفى (إدارة / تمريض / أطباء)' : 'Hospital Personnel (Admin / Clinical / Reception)'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   {lang === 'ar'
-                    ? 'للأطباء، مسؤولي الاستقبال، حراس الأمن، والإدارة التنفيذية'
-                    : 'For authorized hospital personnel, ward supervisors, and security officers.'}
+                    ? 'للأطباء، هيئة التمريض، مسؤولي الاستقبال، حراس الأمن، والإدارة التنفيذية'
+                    : 'For doctors, nursing staff, receptionists, security, and hospital management.'}
                 </p>
               </div>
 
               <div className="space-y-2.5 pt-2 border-t border-slate-100 text-xs text-slate-600">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-hospital-600 flex-shrink-0" />
-                  <span>{lang === 'ar' ? 'إدارة سجلات وتنويم المرضى (CRUD)' : 'Full Patient Admission & CRUD Operations'}</span>
+                  <span>{lang === 'ar' ? 'إدارة سجلات وتنويم المرضى ومكتب الاستقبال' : 'Full Patient Admission & Reception CRUD'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                  <span className="font-semibold text-slate-800">{lang === 'ar' ? 'بوابة بلاغات وملاحظات التمريض والأطباء العاجلة' : 'Clinical Urgent Incident Messaging for Doctors & Nurses'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-hospital-600 flex-shrink-0" />
-                  <span>{lang === 'ar' ? 'قارئ البوابات الذكية وفحص رموز QR' : 'Optical Smart Turnstile & Gate Scanner'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-hospital-600 flex-shrink-0" />
-                  <span>{lang === 'ar' ? 'مراقبة سعة الأسرّة والتقارير التنفيذية' : 'Live Capacity Locks & Executive Reports'}</span>
+                  <span>{lang === 'ar' ? 'قارئ البوابات الذكية وفحص تصاريح QR' : 'Optical Smart Turnstile & Gate Scanner'}</span>
                 </div>
               </div>
             </div>

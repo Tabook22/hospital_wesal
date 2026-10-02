@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (username: string, password?: string) => Promise<void>;
+  login: (username: string, password?: string) => Promise<User>;
   registerVisitor: (data: VisitorRegisterRequest) => Promise<void>;
   logout: () => void;
   switchRole: (role: UserRole) => Promise<void>;
@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token]);
 
-  const login = async (username: string, password?: string) => {
+  const login = async (username: string, password?: string): Promise<User> => {
     const res = await api.login(username, password || 'wesal123');
     setToken(res.access_token);
     localStorage.setItem('wesal_token', res.access_token);
@@ -50,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     setUser(currentUser);
     localStorage.setItem('wesal_user', JSON.stringify(currentUser));
+    return currentUser;
   };
 
   const registerVisitor = async (data: VisitorRegisterRequest) => {

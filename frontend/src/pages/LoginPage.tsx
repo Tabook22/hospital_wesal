@@ -20,8 +20,14 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login(username);
-      navigate('/dashboard');
+      const loggedUser = await login(username, password);
+      if (loggedUser?.role === 'STAFF') {
+        navigate('/staff');
+      } else if (loggedUser?.role === 'VISITOR') {
+        navigate('/visitor');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || (lang === 'ar' ? 'اسم المستخدم أو كلمة المرور غير صحيحة' : 'Invalid username or password'));
     } finally {
@@ -29,11 +35,17 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickDemo = async (role: UserRole) => {
+  const handleQuickDemo = async (targetUsername: string) => {
     setIsLoading(true);
     try {
-      await login(role.toLowerCase());
-      navigate('/dashboard');
+      const loggedUser = await login(targetUsername.toLowerCase());
+      if (loggedUser?.role === 'STAFF') {
+        navigate('/staff');
+      } else if (loggedUser?.role === 'VISITOR') {
+        navigate('/visitor');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || (lang === 'ar' ? 'فشل تسجيل الدخول السريع' : 'Quick login failed'));
     } finally {
@@ -113,7 +125,7 @@ export const LoginPage: React.FC = () => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin, reception, security, management"
+                  placeholder="admin, reception, nurse, doctor, security"
                   className="block w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-hospital-500 focus:border-hospital-500"
                 />
               </div>
@@ -165,7 +177,7 @@ export const LoginPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => handleQuickDemo('ADMIN')}
+                onClick={() => handleQuickDemo('admin')}
                 className="p-2.5 text-left rtl:text-right rounded-xl border border-slate-200 bg-slate-50 hover:bg-hospital-50 hover:border-hospital-300 transition-all group"
               >
                 <div className="text-xs font-bold text-slate-800 group-hover:text-hospital-700">
@@ -178,7 +190,7 @@ export const LoginPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => handleQuickDemo('RECEPTION')}
+                onClick={() => handleQuickDemo('reception')}
                 className="p-2.5 text-left rtl:text-right rounded-xl border border-slate-200 bg-slate-50 hover:bg-hospital-50 hover:border-hospital-300 transition-all group"
               >
                 <div className="text-xs font-bold text-slate-800 group-hover:text-hospital-700">
@@ -191,7 +203,39 @@ export const LoginPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => handleQuickDemo('SECURITY')}
+                onClick={() => handleQuickDemo('nurse')}
+                className="p-2.5 text-left rtl:text-right rounded-xl border-2 border-amber-300 bg-amber-50/50 hover:bg-amber-100 hover:border-amber-400 transition-all group"
+              >
+                <div className="text-xs font-bold text-amber-900 group-hover:text-amber-950 flex items-center justify-between">
+                  <span>{lang === 'ar' ? 'التمريض (Nurse)' : 'Nurse'}</span>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">
+                    {lang === 'ar' ? 'بلاغات فقط' : 'Notices only'}
+                  </span>
+                </div>
+                <div className="text-[10px] text-amber-800/80">
+                  {lang === 'ar' ? 'مريم الكثيري (ملاحظات الزوار)' : 'Visitor Incident Messaging'}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('doctor')}
+                className="p-2.5 text-left rtl:text-right rounded-xl border-2 border-amber-300 bg-amber-50/50 hover:bg-amber-100 hover:border-amber-400 transition-all group"
+              >
+                <div className="text-xs font-bold text-amber-900 group-hover:text-amber-950 flex items-center justify-between">
+                  <span>{lang === 'ar' ? 'طبيب مقيم (Doctor)' : 'Doctor'}</span>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">
+                    {lang === 'ar' ? 'بلاغات فقط' : 'Notices only'}
+                  </span>
+                </div>
+                <div className="text-[10px] text-amber-800/80">
+                  {lang === 'ar' ? 'د. خالد العمري (ملاحظات الزوار)' : 'Clinical Urgent Reporting'}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('security')}
                 className="p-2.5 text-left rtl:text-right rounded-xl border border-slate-200 bg-slate-50 hover:bg-hospital-50 hover:border-hospital-300 transition-all group"
               >
                 <div className="text-xs font-bold text-slate-800 group-hover:text-hospital-700">
@@ -204,7 +248,7 @@ export const LoginPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => handleQuickDemo('MANAGEMENT')}
+                onClick={() => handleQuickDemo('management')}
                 className="p-2.5 text-left rtl:text-right rounded-xl border border-slate-200 bg-slate-50 hover:bg-hospital-50 hover:border-hospital-300 transition-all group"
               >
                 <div className="text-xs font-bold text-slate-800 group-hover:text-hospital-700">

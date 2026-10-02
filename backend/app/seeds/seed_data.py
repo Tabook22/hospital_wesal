@@ -54,6 +54,34 @@ def seed_database():
             db.commit()
             print("Added demo visitor user to existing database.")
             
+        # Ensure demo nurse and doctor staff accounts exist
+        nurse_user = db.query(User).filter(User.username == "nurse").first()
+        if not nurse_user:
+            pw_hash = get_password_hash("wesal123")
+            nurse_user = User(
+                username="nurse",
+                hashed_password=pw_hash,
+                full_name="مريم الكثيري (تمريض - ممرضة مسؤولة)",
+                role="STAFF",
+                is_active=True
+            )
+            db.add(nurse_user)
+            print("Added demo nurse user to existing database.")
+            
+        doctor_user = db.query(User).filter(User.username == "doctor").first()
+        if not doctor_user:
+            pw_hash = get_password_hash("wesal123")
+            doctor_user = User(
+                username="doctor",
+                hashed_password=pw_hash,
+                full_name="د. خالد العمري (طبيب مقيم)",
+                role="STAFF",
+                is_active=True
+            )
+            db.add(doctor_user)
+            print("Added demo doctor user to existing database.")
+        db.commit()
+
         # Ensure visitation categories are set on patients
         patients_list = db.query(Patient).all()
         for p in patients_list:
@@ -135,6 +163,8 @@ def seed_database():
         User(username="reception", hashed_password=pw_hash, full_name="Fatima Al-Mashani", role="RECEPTION"),
         User(username="security", hashed_password=pw_hash, full_name="Sultan Al-Rawas", role="SECURITY"),
         User(username="management", hashed_password=pw_hash, full_name="Director Talal Al-Balooshi", role="MANAGEMENT"),
+        User(username="nurse", hashed_password=pw_hash, full_name="مريم الكثيري (تمريض - ممرضة مسؤولة)", role="STAFF"),
+        User(username="doctor", hashed_password=pw_hash, full_name="د. خالد العمري (طبيب مقيم)", role="STAFF"),
         User(username="visitor", hashed_password=pw_hash, full_name="Ahmed Al-Harthi", role="VISITOR")
     ]
     db.add_all(users)

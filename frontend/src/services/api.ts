@@ -195,12 +195,13 @@ export const api = {
     }),
 
   // Staff Incidents & Internal Employee Messaging
-  getIncidents: (params?: { status?: string; severity?: string; category?: string; ward_name?: string; limit?: number }) => {
+  getIncidents: (params?: { status?: string; severity?: string; category?: string; ward_name?: string; reporter_name?: string; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.status) q.append('status', params.status);
     if (params?.severity) q.append('severity', params.severity);
     if (params?.category) q.append('category', params.category);
     if (params?.ward_name) q.append('ward_name', params.ward_name);
+    if (params?.reporter_name) q.append('reporter_name', params.reporter_name);
     if (params?.limit) q.append('limit', params.limit.toString());
     return request<StaffIncidentItem[]>(`/incidents?${q.toString()}`);
   },

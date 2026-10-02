@@ -40,6 +40,19 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({
   const [suggestedAction, setSuggestedAction] = useState<string>('');
   const [isSuccess, setIsSuccess] = useState(false);
 
+  React.useEffect(() => {
+    if (user?.full_name) {
+      setReporterName(user.full_name);
+    }
+    if (user?.username === 'doctor') {
+      setReporterRole('DOCTOR');
+    } else if (user?.role === 'STAFF') {
+      setReporterRole('NURSE');
+    } else if (user?.role) {
+      setReporterRole(user.role);
+    }
+  }, [user, isOpen]);
+
   // Pre-configured category presets for 1-click fast selection
   const categories: {
     id: IncidentCategory;
@@ -133,6 +146,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({
     onSuccess: () => {
       setIsSuccess(true);
       queryClient.invalidateQueries({ queryKey: ['staff-incidents'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-portal-incidents'] });
       queryClient.invalidateQueries({ queryKey: ['incident-stats'] });
       setTimeout(() => {
         setIsSuccess(false);

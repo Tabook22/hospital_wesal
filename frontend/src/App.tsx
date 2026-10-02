@@ -28,6 +28,7 @@ import { CheckpointsPage } from './pages/CheckpointsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { DemoControlPage } from './pages/DemoControlPage';
 import { IncidentsPage } from './pages/IncidentsPage';
+import { StaffPortalPage } from './pages/StaffPortalPage';
 
 
 const queryClient = new QueryClient({
@@ -39,8 +40,23 @@ const queryClient = new QueryClient({
   },
 });
 
-// Guard: Tier 1 Hospital Staff Only (Blocks Visitors)
+// Guard: Tier 1 Hospital Staff Only (Blocks Visitors & redirects clinical STAFF to their messaging portal)
 const StaffRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/gateway" replace />;
+  }
+  if (user?.role === 'VISITOR') {
+    return <Navigate to="/visitor" replace />;
+  }
+  if (user?.role === 'STAFF') {
+    return <Navigate to="/staff" replace />;
+  }
+  return <>{children}</>;
+};
+
+// Guard: Clinical Staff Portal (Doctors, Nurses, Ward Staff)
+const ClinicalStaffRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/gateway" replace />;
@@ -69,6 +85,9 @@ const FallbackRoute: React.FC = () => {
   if (user?.role === 'VISITOR') {
     return <Navigate to="/visitor" replace />;
   }
+  if (user?.role === 'STAFF') {
+    return <Navigate to="/staff" replace />;
+  }
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -94,6 +113,17 @@ export const App: React.FC = () => {
               <Route path="/visitor" element={<VisitorPortalPage />} />
               <Route path="/visitor-portal" element={<VisitorPortalPage />} />
               <Route path="/visitor-auth" element={<Navigate to="/visitor-portal" replace />} />
+
+              {/* Step 3C: Clinical Staff Portal (Doctors & Nurses - Incident Messaging & Comments) */}
+              <Route
+                path="/staff"
+                element={
+                  <ClinicalStaffRoute>
+                    <StaffPortalPage />
+                  </ClinicalStaffRoute>
+                }
+              />
+              <Route path="/staff-portal" element={<Navigate to="/staff" replace />} />
 
               {/* Tier 1: Hospital Staff Console (Full CRUD & Access Operations) */}
               <Route

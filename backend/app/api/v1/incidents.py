@@ -24,6 +24,7 @@ def get_incidents(
     severity: Optional[str] = Query(None, description="Filter by severity: URGENT, HIGH, MEDIUM, LOW"),
     category: Optional[str] = Query(None, description="Filter by category"),
     ward_name: Optional[str] = Query(None, description="Filter by ward name"),
+    reporter_name: Optional[str] = Query(None, description="Filter by reporter name"),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db)
 ):
@@ -38,6 +39,8 @@ def get_incidents(
         query = query.filter(StaffIncident.category == category.upper())
     if ward_name and ward_name.upper() != "ALL":
         query = query.filter(StaffIncident.ward_name.ilike(f"%{ward_name}%"))
+    if reporter_name and reporter_name.strip():
+        query = query.filter(StaffIncident.reporter_name.ilike(f"%{reporter_name.strip()}%"))
         
     incidents = query.order_by(
         # Put URGENT & OPEN incidents first
